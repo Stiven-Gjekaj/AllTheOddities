@@ -7,8 +7,10 @@
 _Scripts for one job. Each one is short, tested, and safe to run again._
 
 ![Shell](https://img.shields.io/badge/shell-facc15?style=for-the-badge&logo=gnubash&logoColor=030712)
-![macOS](https://img.shields.io/badge/macos-fb923c?style=for-the-badge&logo=apple&logoColor=030712)
-![Linux](https://img.shields.io/badge/linux-f472b6?style=for-the-badge&logo=linux&logoColor=030712)
+![PowerShell](https://img.shields.io/badge/powershell-fdba74?style=for-the-badge&logo=powershell&logoColor=030712)
+![Windows](https://img.shields.io/badge/windows-fb923c?style=for-the-badge&logo=windows&logoColor=030712)
+![macOS](https://img.shields.io/badge/macos-f472b6?style=for-the-badge&logo=apple&logoColor=030712)
+![Linux](https://img.shields.io/badge/linux-e879f9?style=for-the-badge&logo=linux&logoColor=030712)
 [![MIT licence](https://img.shields.io/badge/mit_licence-c084fc?style=for-the-badge&logoColor=030712)](LICENSE)
 
 <p align="center">
@@ -76,6 +78,7 @@ time. A thing goes here when it helped once, and it is too niche for `att`.
 | Oddity | What it does | Hosts |
 | :-- | :-- | :-- |
 | [`ssh/new-machine.sh`](ssh/new-machine.sh) | Makes a new computer ready to use SSH with GitHub | macOS, Linux |
+| [`ssh/new-machine.ps1`](ssh/new-machine.ps1) | Makes a new computer ready to use SSH with GitHub | Windows |
 
 [docs/oddities.md](docs/oddities.md) says how each one works on each host.
 
@@ -87,9 +90,22 @@ On the new computer:
 git clone https://github.com/Stiven-Gjekaj/AllTheOddities.git
 ```
 
+On macOS or on Linux:
+
 ```bash
 sh AllTheOddities/ssh/new-machine.sh
 ```
+
+On Windows, in Windows PowerShell or in PowerShell 7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File AllTheOddities\ssh\new-machine.ps1
+```
+
+Windows turns the `ssh-agent` service off by default. Run the script one time
+as an administrator, and it turns the service on. On Windows, the script also
+tells Git to use the OpenSSH of Windows, because the ssh of Git for Windows
+does not use that agent.
 
 ```
 Key made: /Users/you/.ssh/id_ed25519
@@ -102,12 +118,12 @@ GitHub accepts the key.
 The clone uses HTTPS, because the computer has no key yet. After the script,
 SSH works.
 
-| Option | What it does |
-| :-- | :-- |
-| `-c comment` | Sets the comment of the key. The default is `user@host`. |
-| `-k keyfile` | Sets the path of the key. The default is `~/.ssh/id_ed25519`. |
-| `-N` | Makes the key with no passphrase. |
-| `-o` | Offline. It does not use the agent, `gh`, or the network. |
+| `.sh` | `.ps1` | What it does |
+| :-- | :-- | :-- |
+| `-c comment` | `-Comment comment` | Sets the comment of the key. The default is `user@host`. |
+| `-k keyfile` | `-KeyFile keyfile` | Sets the path of the key. The default is `~/.ssh/id_ed25519`. |
+| `-N` | `-NoPassphrase` | Makes the key with no passphrase. |
+| `-o` | `-Offline` | Offline. It does not use the agent, Git, `gh`, or the network. |
 
 The exit codes:
 
@@ -121,7 +137,7 @@ The exit codes:
 
 ## Add an oddity
 
-1. Put it in a directory for its topic, such as `ssh/` or `macos/`.
+1. Put it in a directory for its topic, such as `ssh/` or `windows/`.
 2. Tell what it does, and how to use it, in a comment at the top.
 3. Add a test beside it. The test makes its own state, in a temporary
    directory.
