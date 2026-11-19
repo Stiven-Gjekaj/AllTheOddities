@@ -59,6 +59,9 @@ Anti-goals (a failure even if the code works):
   Windows installer must run in it.
 - Many oddities need an administrator. `odd` does not raise its own rights.
 - The release pipeline of AllTheTools exists and works. Reuse it.
+- The repository is public on GitHub. The owner picked this, because the
+  installers download from `raw.githubusercontent.com` and from the releases
+  with no token.
 
 ## 4. Approaches
 
