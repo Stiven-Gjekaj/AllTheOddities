@@ -27,9 +27,9 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 
 > [!NOTE]
 > **Before the first release.**
-> Fourteen oddities work, and each one is **experimental**: its
+> All 20 oddities of the first release work, and each one is **experimental**: its
 > flags and its output can change. The first release, `2026.MM.0 "Astrolabe"`,
-> comes with 20 oddities. [docs/releasing.md](docs/releasing.md) gives the
+> is ready. [docs/releasing.md](docs/releasing.md) gives the
 > rules of the versions and the labels.
 
 ---
@@ -129,6 +129,12 @@ check.
 | `odd expose` | Shares a local port on your tailnet, or in public, until Ctrl+C | all | experimental |
 | `odd carry` | Sends settings files to another computer of your tailnet | all | experimental |
 | `odd remote` | Turns on remote desktop | all | experimental |
+| `odd font` | Installs a font for the user only, or a Nerd Font by name | all | experimental |
+| `odd devcert` | Makes a trusted HTTPS certificate for localhost | all | experimental |
+| `odd autostart` | Starts a command when you log in | all | experimental |
+| `odd cache-purge` | Lists the caches of developer tools with their size, and deletes the ones you select | all | experimental |
+| `odd apps` | Installs the apps of one list with the package manager of the host | all | experimental |
+| `odd dualboot-clock` | Stops the clock from jumping between Windows and Linux | Windows, Linux | experimental |
 
 `odd list` shows each oddity of your build. `odd <oddity> --help` gives its
 options. [docs/oddities.md](docs/oddities.md) says what each one changes on
@@ -192,6 +198,12 @@ odd expose 3000 --public        # a dev server on the internet, with Tailscale F
 odd carry send laptop           # your settings files, over Taildrop
 odd carry receive --apply       # on the laptop
 sudo odd remote
+odd font JetBrainsMono          # a Nerd Font, by name
+sudo odd devcert myapp.test     # https://localhost and https://myapp.test
+odd autostart add sync -- ~/bin/sync --quiet
+odd cache-purge                 # asks for each cache, with its size
+odd apps init && odd apps install
+odd dualboot-clock              # on the Windows side of a dual boot
 ```
 
 Each one takes `--dry-run` and `--undo`.
