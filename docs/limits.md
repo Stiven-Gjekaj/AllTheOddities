@@ -81,6 +81,8 @@ What each oddity cannot do on each host, and what the tests do not cover.
 - On Windows, `odd` reads the English labels of `netsh` (`SSID`,
   `Key Content`). On Windows in another language, it does not find them.
 - On Linux, reading a password can need `sudo`.
+- On Windows, a network name with a space waits for a test: `odd` gives
+  `netsh` the argument `name=<network>` in one piece.
 
 ## odd share
 
@@ -120,3 +122,9 @@ What each oddity cannot do on each host, and what the tests do not cover.
 ## odd dualboot-clock
 
 - The change on Windows takes effect at the next restart.
+
+## odd autostart
+
+- On Linux, systemd wants the full path of the program, such as
+  `/usr/local/bin/sync`. A shell turns `~/bin/sync` into a full path before
+  `odd` sees it.
