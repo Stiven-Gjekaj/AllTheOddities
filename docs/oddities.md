@@ -191,3 +191,69 @@ keeps each line that the person wrote.
 
 Undo puts back the servers before, or the servers of DHCP when there were
 none.
+
+## odd wifi-pass
+
+`odd wifi-pass [<network>] [--qr]` changes nothing. With no network, it reads
+the current one.
+
+| Host | The current network | The password |
+| :-- | :-- | :-- |
+| macOS | `ipconfig getsummary` of the Wi-Fi device | The keychain, with `security`. macOS asks for your password. |
+| Linux | `nmcli dev wifi`, the active line | `nmcli -s` of the connection |
+| Windows | `netsh wlan show interfaces` | `netsh wlan show profile ... key=clear` |
+
+`--qr` prints a code in the format `WIFI:T:WPA;S:<name>;P:<password>;;`,
+which the camera of a phone reads to join the network.
+
+## odd firewall
+
+`odd firewall open <port> [--udp]`, `close`, `list`. Windows and Linux.
+
+| Host | What it changes |
+| :-- | :-- |
+| Windows | A rule `odd-<port>-<tcp|udp>` of `netsh advfirewall` |
+| Linux with ufw active | `ufw allow <port>/<proto>` |
+| Linux with firewalld running | `firewall-cmd --permanent --add-port`, then `--reload` |
+
+On a Linux with no firewall, the port is open already, and `odd` changes
+nothing. Undo closes the port.
+
+## odd share
+
+`odd share <path> [--port <n>]` serves a file or a folder until Ctrl+C, at
+`http://<address>:<port>/<token>/`, and prints a QR code of the link. The
+token is 16 random bytes. A request without it, or for a path outside the
+shared folder, gets 404. It answers GET only. It changes nothing on the
+computer. On the first run, the firewall of macOS or Windows can ask to let
+`odd` take connections.
+
+## odd expose
+
+`odd expose <port> [--public]` runs `tailscale serve <port>`, or
+`tailscale funnel <port>` with `--public`. Tailscale prints the URL, and
+Ctrl+C stops the share. It needs Tailscale (`odd ssh --tailscale`).
+
+## odd carry
+
+`odd carry send <computer> [<file>...]` packs files of your home directory in
+one `tar`, and sends it with Taildrop. With no file, it sends the settings
+files that exist: `.ssh/config`, `.gitconfig`, `.gitconfig-*`, `.profile`,
+`.zprofile`, `.bashrc`, `.zshrc`. It sends a private key only when you name
+it.
+
+`odd carry receive` waits for the files, unpacks them into
+`~/.local/state/odd/carry/files`, and lists them. `--apply` copies them into
+your home directory. Undo puts back the files before.
+
+## odd remote
+
+| Host | What it turns on | Administrator |
+| :-- | :-- | :-- |
+| macOS | Screen Sharing (`launchctl load -w` of its daemon) | yes |
+| Windows | Remote Desktop (`fDenyTSConnections` = 0) and its firewall rule | yes |
+| Linux | GNOME Remote Desktop (`grdctl rdp enable`) | no |
+
+Windows Home has no Remote Desktop server, and `odd` says so. On Linux, set
+the user name and the password in Settings, because `grdctl` takes them only
+on the command line. Undo turns it off.
