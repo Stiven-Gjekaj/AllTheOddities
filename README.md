@@ -26,8 +26,7 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 ---
 
 > [!NOTE]
-> **Before the first release.**
-> The 20 oddities of the first release, `2026.11.0 "Astrolabe"`, are in `odd`.
+> **Version 2026.11.0 "Astrolabe": the first release, with 20 oddities.**
 > Each one is **experimental**: it passes its tests on Windows, macOS and
 > Linux against a fake host, and waits for a run on real computers. Its flags
 > and its output can change. [docs/releasing.md](docs/releasing.md) gives the
