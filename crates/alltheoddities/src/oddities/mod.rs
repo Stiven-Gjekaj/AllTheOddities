@@ -6,6 +6,7 @@ pub mod cache_purge;
 pub mod carry;
 pub mod devcert;
 pub mod dns;
+pub mod dualboot_clock;
 pub mod env;
 pub mod expose;
 pub mod firewall;
