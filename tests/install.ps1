@@ -13,6 +13,7 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ("odd-test-" + [Guid]::NewGuid())
 $release = Join-Path $work 'release'
 New-Item -ItemType Directory -Path $release | Out-Null
 $server = $null
+$passed = $false
 
 function Fail($why) { Write-Host "FAIL: $why"; exit 1 }
 
@@ -74,7 +75,11 @@ try {
     if (Test-Path (Join-Path (Join-Path (Join-Path $env:LOCALAPPDATA 'Programs') 'odd') 'odd.exe')) { Fail 'a bad checksum installed odd' }
 
     Write-Host 'PASS'
+    # The last native command can leave a non-zero LASTEXITCODE, which would
+    # become the exit code of the test.
+    $passed = $true
 } finally {
     if ($server) { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
     Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 }
+if ($passed) { exit 0 }
