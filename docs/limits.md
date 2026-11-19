@@ -99,3 +99,24 @@ What each oddity cannot do on each host, and what the tests do not cover.
 
 - macOS can refuse to turn on Screen Sharing from a terminal. Then turn it on
   in System Settings.
+
+## odd font
+
+- An app that is open sees a new font after a restart of the app.
+
+## odd devcert
+
+- Firefox does not read the store of the system. Import `ca.pem` in Firefox,
+  or turn on `security.enterprise_roots.enabled`.
+- The key of the authority is in your home directory. Anybody who reads it
+  can make a certificate that this computer trusts. Run `odd devcert --undo`
+  when you no longer need it.
+
+## odd apps
+
+- The catalog is short. Add other apps with `[custom.<name>]`.
+- Linux needs `sudo`, and knows the Debian, Fedora and Arch families.
+
+## odd dualboot-clock
+
+- The change on Windows takes effect at the next restart.
