@@ -27,7 +27,7 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 
 > [!NOTE]
 > **Before the first release.**
-> Eight oddities work, and each one is **experimental**: its
+> Fourteen oddities work, and each one is **experimental**: its
 > flags and its output can change. The first release, `2026.MM.0 "Astrolabe"`,
 > comes with 20 oddities. [docs/releasing.md](docs/releasing.md) gives the
 > rules of the versions and the labels.
@@ -123,6 +123,12 @@ check.
 | `odd hostname` | Sets the name of the computer in each place that the host keeps it | all | experimental |
 | `odd hosts` | Adds and removes entries of the hosts file, in a block that `odd` manages | all | experimental |
 | `odd dns` | Sets the DNS servers of the network in use, with presets | all | experimental |
+| `odd wifi-pass` | Shows the password of a saved Wi-Fi network, and a QR code for a phone | all | experimental |
+| `odd firewall` | Opens or closes a port in the firewall | Windows, Linux | experimental |
+| `odd share` | Serves a file or a folder on the local network with a secret link and a QR code, until Ctrl+C | all | experimental |
+| `odd expose` | Shares a local port on your tailnet, or in public, until Ctrl+C | all | experimental |
+| `odd carry` | Sends settings files to another computer of your tailnet | all | experimental |
+| `odd remote` | Turns on remote desktop | all | experimental |
 
 `odd list` shows each oddity of your build. `odd <oddity> --help` gives its
 options. [docs/oddities.md](docs/oddities.md) says what each one changes on
@@ -179,6 +185,13 @@ sudo odd hostname studio
 sudo odd hosts add 10.0.0.5 nas nas.lan
 sudo odd dns set cloudflare
 sudo odd dns reset              # back to the servers of DHCP
+odd wifi-pass --qr              # the current network, and a QR code
+sudo odd firewall open 8080
+odd share ~/Downloads/build.zip # a link and a QR code for a phone
+odd expose 3000 --public        # a dev server on the internet, with Tailscale Funnel
+odd carry send laptop           # your settings files, over Taildrop
+odd carry receive --apply       # on the laptop
+sudo odd remote
 ```
 
 Each one takes `--dry-run` and `--undo`.
