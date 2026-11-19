@@ -5,6 +5,7 @@
 //! computer from anywhere). With no part flag, `odd ssh` asks about each.
 
 pub mod out;
+pub mod server;
 
 use std::path::PathBuf;
 
@@ -148,6 +149,9 @@ impl Oddity for Ssh {
         let mut exit = Exit::Done;
         if parts.out {
             exit = out::run(m, ctx)?;
+        }
+        if parts.inbound {
+            server::enable(ctx)?;
         }
         Ok(exit)
     }
