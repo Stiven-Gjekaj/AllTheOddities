@@ -53,20 +53,28 @@ const TTY: &str = "CONIN$";
 /// the output stream stays clean for `--json`.
 pub struct Terminal {
     source: Source,
+    warned: std::cell::Cell<bool>,
 }
 
 impl Terminal {
-    /// Gives a terminal, or [`Defaults`] when the host has no terminal.
+    /// Gives the terminal of this run. With no terminal at all, each
+    /// question takes its default, and the first question says so.
     pub fn open() -> Box<dyn Ask> {
         use std::io::IsTerminal;
         let tty_opens = std::fs::File::open(TTY).is_ok();
-        match pick_source(std::io::stdin().is_terminal(), tty_opens) {
-            Source::None => {
-                eprintln!("No terminal: odd takes the default of each question.");
-                Box::new(Defaults)
-            }
-            source => Box::new(Terminal { source }),
+        let source = pick_source(std::io::stdin().is_terminal(), tty_opens);
+        Box::new(Terminal {
+            source,
+            warned: std::cell::Cell::new(false),
+        })
+    }
+
+    /// True when there is no terminal. Says so once.
+    fn none(&self) -> bool {
+        if self.source == Source::None && !self.warned.replace(true) {
+            eprintln!("No terminal: odd takes the default of each question.");
         }
+        self.source == Source::None
     }
 
     fn line(&self, prompt: &str) -> Option<String> {
@@ -89,6 +97,9 @@ impl Terminal {
 
 impl Ask for Terminal {
     fn yes_no(&self, question: &str, default: bool) -> bool {
+        if self.none() {
+            return default;
+        }
         let hint = if default { "[Y/n]" } else { "[y/N]" };
         match self.line(&format!("{question} {hint} ")).as_deref() {
             Some("y" | "Y" | "yes" | "Yes") => true,
@@ -98,6 +109,9 @@ impl Ask for Terminal {
     }
 
     fn text(&self, question: &str, default: Option<&str>) -> Option<String> {
+        if self.none() {
+            return default.map(str::to_owned);
+        }
         let prompt = match default {
             Some(d) => format!("{question} [{d}] "),
             None => format!("{question} "),
@@ -109,6 +123,9 @@ impl Ask for Terminal {
     }
 
     fn secret(&self, question: &str) -> Option<String> {
+        if self.none() {
+            return None;
+        }
         // rpassword reads the terminal itself, so a pipe on stdin is no problem.
         rpassword::prompt_password(format!("{question} "))
             .ok()
