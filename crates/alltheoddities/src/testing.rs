@@ -169,7 +169,7 @@ impl TestCtx {
     }
 
     pub fn state_dir(&self) -> PathBuf {
-        self.dir.path().join("state")
+        self.home().join(".local").join("state").join("odd")
     }
 
     /// A path inside the temporary directory, for a file of the system.

@@ -126,12 +126,36 @@ pub fn record(ctx: &mut Ctx<'_>, oddity: &str, step: Undo) -> Result<()> {
                 && q == p
             {
                 *after_sha256 = new_sum.clone();
-                return save(&path, &file);
+                return save_as_person(ctx, &path, &file);
             }
         }
     }
     file.steps.push(step);
-    save(&path, &file)
+    save_as_person(ctx, &path, &file)
+}
+
+/// Saves the record. Under sudo, gives the record, and each directory that
+/// the save made, to the person who ran sudo. Else a later run without sudo
+/// could not write its record.
+fn save_as_person(ctx: &mut Ctx<'_>, path: &Path, file: &File) -> Result<()> {
+    let dir = path.parent().unwrap_or(path).to_path_buf();
+    let mut top = dir.clone();
+    let mut cur = dir.as_path();
+    while !cur.exists() && cur != ctx.home {
+        top = cur.to_path_buf();
+        match cur.parent() {
+            Some(p) => cur = p,
+            None => break,
+        }
+    }
+    save(path, file)?;
+    let user = ctx.env.get("SUDO_USER").cloned();
+    if let Some(user) = user
+        && ctx.host.os != crate::host::Os::Windows
+    {
+        ctx.change("chown", &["-R", &user, &top.to_string_lossy()])?;
+    }
+    Ok(())
 }
 
 /// Puts `body` in the managed block `name` of a file, and records how to
@@ -371,6 +395,29 @@ mod tests {
         };
         undo(&mut t.ctx(), "x", &mut call).unwrap();
         assert_eq!(seen, vec!["remove-entry /x"]);
+    }
+
+    #[test]
+    fn under_sudo_the_record_belongs_to_the_person() {
+        let mut t = TestCtx::new(Os::Linux);
+        t.env.insert("SUDO_USER".into(), "you".into());
+        t.runner.answer("chown", &[], Output::ok(""));
+        record(&mut t.ctx(), "x", run("a", "1")).unwrap();
+        let top = t.home().join(".local");
+        let call = t
+            .runner
+            .calls()
+            .into_iter()
+            .find(|c| c[0] == "chown")
+            .unwrap();
+        assert_eq!(call, vec!["chown", "-R", "you", &top.to_string_lossy()]);
+    }
+
+    #[test]
+    fn without_sudo_no_chown() {
+        let mut t = TestCtx::new(Os::Linux);
+        record(&mut t.ctx(), "x", run("a", "1")).unwrap();
+        assert!(t.runner.calls().is_empty());
     }
 
     #[test]
