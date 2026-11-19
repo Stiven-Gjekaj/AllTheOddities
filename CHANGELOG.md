@@ -19,6 +19,14 @@ of the versions, the codenames and the labels.
 - `odd hostname` (experimental): the name of the computer, in each place.
 - `odd hosts` (experimental): entries of the hosts file, in a block of odd.
 - `odd dns` (experimental): the DNS servers of the network in use.
+- `odd wifi-pass` (experimental): the password of a saved Wi-Fi network, and
+  a QR code.
+- `odd firewall` (experimental): open or close a port.
+- `odd share` (experimental): serve a file or a folder with a secret link.
+- `odd expose` (experimental): share a local port on the tailnet or in public.
+- `odd carry` (experimental): settings files to another computer, over
+  Taildrop.
+- `odd remote` (experimental): remote desktop.
 - `odd list`, `odd update` and `odd --version`.
 - The one-line installers `install.sh` and `install.ps1`.
 
