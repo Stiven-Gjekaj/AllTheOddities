@@ -257,3 +257,87 @@ your home directory. Undo puts back the files before.
 Windows Home has no Remote Desktop server, and `odd` says so. On Linux, set
 the user name and the password in Settings, because `grdctl` takes them only
 on the command line. Undo turns it off.
+
+## odd font
+
+`odd font <file | folder | archive | name>` installs each `.ttf` and `.otf`
+that it finds, for the user only, with no administrator. A name such as
+`JetBrainsMono` downloads that Nerd Font from its latest release (`.zip` on
+macOS and Windows, `.tar.xz` on Linux), and `tar` unpacks it.
+
+| Host | Where the fonts go | Then |
+| :-- | :-- | :-- |
+| macOS | `~/Library/Fonts` | |
+| Linux | `~/.local/share/fonts` | `fc-cache -f` |
+| Windows | `%LOCALAPPDATA%\Microsoft\Windows\Fonts` | a value `<name> (TrueType)` in `HKCU\...\Fonts` |
+
+A font file that is there already stays. Undo deletes the files that `odd`
+copied, and their registry values.
+
+## odd devcert
+
+`odd devcert [<name>...]` makes, in `~/.local/share/odd/devcert`:
+
+1. A P-256 authority `odd devcert CA` (`ca.pem`, `ca.key`), one time.
+2. `localhost.pem` and `localhost.key` for `localhost`, `127.0.0.1`, `::1` and
+   each name that you give, for 825 days.
+3. The trust of the host in the authority: the System keychain on macOS, the
+   store of the distribution on Linux, the store of the user on Windows
+   (Windows asks you).
+
+It uses the `openssl` of the host (Git for Windows has one). Undo removes the
+trust, and keeps the files. Firefox has its own store: import `ca.pem` there.
+
+## odd autostart
+
+`odd autostart add <name> -- <command> [args]`, `remove <name>`, `list`.
+
+| Host | What `add` makes |
+| :-- | :-- |
+| macOS | `~/Library/LaunchAgents/com.odd.<name>.plist`, then `launchctl load -w` |
+| Linux | `~/.config/systemd/user/odd-<name>.service`, then `systemctl --user enable --now` |
+| Windows | The value `odd-<name>` in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
+
+Each argument stays whole, with its spaces and quotes. `remove` and undo
+reverse it.
+
+## odd cache-purge
+
+`odd cache-purge` lists the caches that exist, with their size and the number
+of files, and asks for each one. `--all` deletes each one, `--only <name>`
+selects, and `--list` deletes nothing. The caches: npm, pnpm, yarn, pip,
+cargo, go, gradle, and on macOS xcode (DerivedData) and homebrew. A link in a
+cache goes, and its target stays. Each tool fills its cache again when it
+needs it, so there is no undo.
+
+## odd apps
+
+`odd apps init` writes `~/.config/odd/apps.toml` (`%APPDATA%\odd\apps.toml`):
+
+```toml
+apps = ["git", "gh", "vscode"]
+
+[custom.myapp]
+brew = "myapp"        # or cask = "myapp"
+winget = "Vendor.MyApp"
+apt = "myapp"
+```
+
+`odd apps install` installs each app that is not installed, with Homebrew on
+macOS (it offers to install Homebrew), apt, dnf or pacman on Linux (with
+`sudo`), and winget on Windows. `odd apps catalog` lists the names that `odd`
+knows: git, gh, vscode, firefox, chrome, nodejs, python, rustup, ripgrep, fd,
+jq, neovim, tmux, vlc, obsidian. A `[custom.<name>]` table wins over the
+catalog.
+
+## odd dualboot-clock
+
+Windows keeps local time in the hardware clock, and Linux keeps UTC, so the
+clock jumps by hours after each switch. One side is enough:
+
+- On Windows (the better side): `odd dualboot-clock` sets
+  `RealTimeIsUniversal` = 1, from the next restart.
+- On Linux: `odd dualboot-clock --linux-local` runs
+  `timedatectl set-local-rtc 1`.
+
+Undo puts back the setting before.
