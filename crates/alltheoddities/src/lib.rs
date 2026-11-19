@@ -4,6 +4,7 @@
 //! test reaches each part of it.
 
 pub mod ask;
+pub mod block;
 pub mod ctx;
 pub mod exit;
 pub mod host;
