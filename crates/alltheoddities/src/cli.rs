@@ -10,12 +10,14 @@ fn common(cmd: Command) -> Command {
         .arg(
             Arg::new("yes")
                 .long("yes")
+                .global(true)
                 .action(ArgAction::SetTrue)
                 .help("Take the default of each question, and ask nothing"),
         )
         .arg(
             Arg::new("dry-run")
                 .long("dry-run")
+                .global(true)
                 .action(ArgAction::SetTrue)
                 .help("Print each step and each command, and change nothing"),
         );
@@ -24,6 +26,7 @@ fn common(cmd: Command) -> Command {
     cmd.arg(
         Arg::new("undo")
             .long("undo")
+            .global(true)
             .action(ArgAction::SetTrue)
             .help("Revert the changes that the last runs of this oddity recorded"),
     )

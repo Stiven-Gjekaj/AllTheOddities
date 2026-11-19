@@ -405,6 +405,17 @@ mod tests {
     }
 
     #[test]
+    fn dry_run_after_add_changes_nothing() {
+        let mut t = unix("/bin/bash");
+        assert_eq!(
+            odd(&mut t, &["path", "add", "/opt/x", "--dry-run"]),
+            Exit::Done
+        );
+        assert!(!t.home().join(".profile").exists());
+        assert!(t.output().contains("would write:"), "{}", t.output());
+    }
+
+    #[test]
     fn a_relative_dir_is_refused() {
         let mut t = unix("/bin/bash");
         assert_eq!(odd(&mut t, &["path", "add", "opt/x"]), Exit::Failed);
