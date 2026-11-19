@@ -83,21 +83,24 @@ impl Oddity for Git {
 
 /// The folder as git matches it: full, with its links resolved, with
 /// forward slashes, and with a final `/`, so it matches each repository
-/// under it.
-pub fn full_folder(folder: &str, os: Os) -> Result<String> {
+/// under it. Also gives the last part of the folder.
+pub fn full_folder(folder: &str) -> Result<(String, String)> {
     let path = std::fs::canonicalize(folder)
         .with_context(|| format!("the folder {folder} does not exist"))?;
+    let last = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "folder".into());
     let mut s = path.to_string_lossy().into_owned();
     if let Some(rest) = s.strip_prefix(r"\\?\") {
         s = rest.to_owned();
     }
-    if os == Os::Windows {
-        s = s.replace('\\', "/");
-    }
+    // A path of this computer. git takes forward slashes on Windows too.
+    s = s.replace('\\', "/");
     if !s.ends_with('/') {
         s.push('/');
     }
-    Ok(s)
+    Ok((s, last))
 }
 
 /// A value in double quotes, as git reads it.
@@ -126,12 +129,7 @@ fn write_recorded(ctx: &mut Ctx<'_>, path: &std::path::Path, text: &str) -> Resu
 
 fn add(ctx: &mut Ctx<'_>, folder: &str, name: &str, email: &str, sign: bool) -> Result<()> {
     let os = ctx.host.os;
-    let folder = full_folder(folder, os)?;
-    let last = folder
-        .trim_end_matches('/')
-        .rsplit('/')
-        .next()
-        .unwrap_or("folder");
+    let (folder, last) = full_folder(folder)?;
     let safe: String = last
         .chars()
         .map(|c| {
@@ -288,7 +286,7 @@ mod tests {
             "{profile}"
         );
         let config = read(&t, ".gitconfig");
-        let canon = full_folder(&work, Os::MacOs).unwrap();
+        let (canon, _) = full_folder(&work).unwrap();
         assert!(
             config.contains(&format!("[includeIf \"gitdir/i:{canon}\"]")),
             "{config}"
