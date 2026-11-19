@@ -34,7 +34,9 @@ try {
     Set-Content -Path (Join-Path $release 'SHA256SUMS') -Value ($sums -join "`n")
 
     $python = if (Get-Command python3 -ErrorAction SilentlyContinue) { 'python3' } else { 'python' }
-    $port = & $python -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'
+    # Single quotes inside: Windows PowerShell 5.1 drops the double quotes in an
+    # argument that it gives to a native program.
+    $port = & $python -c 'import socket; s=socket.socket(); s.bind((''127.0.0.1'', 0)); print(s.getsockname()[1])'
     $serve = @{ FilePath = $python; ArgumentList = @('-m', 'http.server', $port, '--bind', '127.0.0.1', '--directory', $release); PassThru = $true }
     if ($PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows) { $serve.WindowStyle = 'Hidden' }
     $server = Start-Process @serve
