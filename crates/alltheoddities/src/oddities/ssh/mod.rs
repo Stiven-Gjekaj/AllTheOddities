@@ -8,6 +8,7 @@ pub mod keys;
 pub mod keys_only;
 pub mod out;
 pub mod server;
+pub mod tailscale;
 
 use std::path::PathBuf;
 
@@ -171,6 +172,9 @@ impl Oddity for Ssh {
                 keys_only::apply(ctx, count)?;
             }
         }
+        if parts.tailscale {
+            tailscale::join(m, ctx)?;
+        }
         Ok(exit)
     }
 }
@@ -214,6 +218,41 @@ mod tests {
             &["--in", "--keep-passwords", "--github-user", "you"],
         );
         assert!(t.home().join(".ssh/authorized_keys").exists());
+    }
+
+    #[test]
+    fn a_second_run_records_no_step_twice() {
+        let mut t = TestCtx::new(Os::Linux);
+        t.distro = Some("ubuntu".into());
+        t.runner
+            .answer("systemctl", &["cat", "ssh"], Output::ok("[Unit]\n"));
+        t.runner
+            .answer("systemctl", &["is-active"], Output::fail(3, "inactive"));
+        t.runner.answer("systemctl", &["enable"], Output::ok(""));
+        t.runner.answer("systemctl", &["restart"], Output::ok(""));
+        for p in [
+            "chmod",
+            "ssh-keygen",
+            "ssh-add",
+            "hostname",
+            crate::oddities::ssh::keys_only::SSHD_UNIX,
+        ] {
+            t.runner.answer(p, &[], Output::ok("box\n"));
+        }
+        t.runner
+            .answer("ssh", &[], Output::fail(1, "successfully authenticated"));
+        t.http
+            .page("https://github.com/you.keys", "ssh-ed25519 AAAA1\n");
+        let sshd = t.sys("/etc/ssh/sshd_config");
+        std::fs::create_dir_all(sshd.parent().unwrap()).unwrap();
+        std::fs::write(&sshd, "Port 22\n").unwrap();
+        let args = ["--out", "--in", "--github-user", "you", "--no-passphrase"];
+        assert_eq!(odd(&mut t, &args), Exit::Done);
+        let first = crate::state::steps(&t.ctx(), "ssh").unwrap();
+        assert_eq!(odd(&mut t, &args), Exit::Done);
+        let second = crate::state::steps(&t.ctx(), "ssh").unwrap();
+        assert_eq!(first, second);
+        assert!(!first.is_empty());
     }
 
     #[test]
