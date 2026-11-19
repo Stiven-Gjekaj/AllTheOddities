@@ -3,7 +3,9 @@
 Each release of `odd`. [docs/releasing.md](docs/releasing.md) gives the rules
 of the versions, the codenames and the labels.
 
-## Unreleased
+## 2026.11.0 "Astrolabe" (2026-11-19)
+
+The first release: 20 oddities, each one experimental.
 
 ### New
 
