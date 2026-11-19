@@ -146,6 +146,14 @@ impl Oddity for Devcert {
                 &cnf,
             ],
         )?;
+        // Under sudo, openssl wrote the files as root, and a key that only
+        // root can read is of no use to the server of the person.
+        if let Some(user) = ctx.env.get("SUDO_USER").cloned()
+            && ctx.host.os != Os::Windows
+        {
+            let d = dir.to_string_lossy().into_owned();
+            run_ok(ctx, "chown", &["-R", &user, &d])?;
+        }
         trust(ctx, &ca_pem)?;
         ctx.say("Use these files in your server:");
         ctx.say(&format!("  certificate: {pem}"));
@@ -409,6 +417,21 @@ mod tests {
             .find(|c| c[0] == "certutil")
             .unwrap();
         assert_eq!(call[1..4], ["-user", "-addstore", "Root"]);
+    }
+
+    #[test]
+    fn under_sudo_the_files_go_to_the_person() {
+        let mut t = host(Os::Linux);
+        with_ca(&mut t);
+        t.env.insert("SUDO_USER".into(), "you".into());
+        t.runner.answer("chown", &[], Output::ok(""));
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        let dir = super::dir(&t.ctx()).to_string_lossy().into_owned();
+        assert!(
+            t.runner
+                .calls()
+                .contains(&vec!["chown".into(), "-R".into(), "you".into(), dir])
+        );
     }
 
     #[test]
