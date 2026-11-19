@@ -1,4 +1,4 @@
-# AllTheOddments
+# AllTheOddities
 
 Small things that helped me once and can help again.
 

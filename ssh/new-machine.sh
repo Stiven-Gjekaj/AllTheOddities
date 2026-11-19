@@ -37,7 +37,7 @@ done
 say() { printf '%s\n' "$*"; }
 ssh_dir="$HOME/.ssh"
 config="$ssh_dir/config"
-marker="# AllTheOddments: github"
+marker="# AllTheOddities: github"
 
 # 1. The directory. SSH refuses keys in a directory that others can read.
 mkdir -p "$ssh_dir"
