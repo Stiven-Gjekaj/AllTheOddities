@@ -5,4 +5,5 @@ pub mod git;
 pub mod list;
 pub mod path;
 pub mod ssh;
+pub mod tweaks;
 pub mod update;
