@@ -52,3 +52,26 @@ What each oddity cannot do on each host, and what the tests do not cover.
   mark, so macOS and SmartScreen do not block `odd`.
 - The whole of `odd ssh` on a new Windows 10, Windows 11, macOS and Linux
   computer.
+
+## odd git
+
+- A folder that you move or rename keeps its old path in `~/.gitconfig`. Run
+  `odd git add` again for the new path.
+
+## odd tweaks
+
+- On Windows, `odd` writes a DWORD in the form that `reg query` prints, such
+  as `0x1`. This waits for a test on a real Windows computer.
+- macOS key repeat changes at the next login.
+
+## odd hostname
+
+- On macOS, a name that was not set before (`HostName` often is not) stays
+  set after undo.
+- On Windows, the new name comes after a restart.
+
+## odd dns
+
+- On Linux, `odd dns` needs NetworkManager, and sets IPv4 servers only.
+- On Windows, `odd` reads the static servers from the registry key of the
+  interface. A VPN that sets its own servers can hide them.
