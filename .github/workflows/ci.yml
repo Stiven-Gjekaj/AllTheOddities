@@ -1,0 +1,32 @@
+# Runs the test of each oddity on each host that it supports.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shell:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh ssh/test-new-machine.sh
+
+  powershell:
+    strategy:
+      fail-fast: false
+      matrix:
+        # powershell is Windows PowerShell 5.1, the shell of a new computer.
+        # pwsh is PowerShell 7.
+        shell: [powershell, pwsh]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./ssh/test-new-machine.ps1
