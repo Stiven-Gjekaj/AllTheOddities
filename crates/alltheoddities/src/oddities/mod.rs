@@ -1,5 +1,6 @@
 //! The oddities. Each one is a file here and one line in `ODDITIES`.
 
+pub mod env;
 pub mod git;
 pub mod list;
 pub mod path;
