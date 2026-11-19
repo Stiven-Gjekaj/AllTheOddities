@@ -2,6 +2,7 @@
 
 pub mod env;
 pub mod git;
+pub mod hostname;
 pub mod list;
 pub mod path;
 pub mod ssh;
