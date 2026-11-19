@@ -40,6 +40,9 @@ impl Output {
 /// Runs a program of the host. The tests use a fake.
 pub trait Runner {
     fn run(&self, program: &str, args: &[&str]) -> Result<Output>;
+    /// Runs a program on the terminal of the person, so it can ask its own
+    /// questions, such as the passphrase of `ssh-keygen`. Gives the status.
+    fn interactive(&self, program: &str, args: &[&str]) -> Result<i32>;
     /// True when a program with this name is in a directory of PATH.
     fn on_path(&self, program: &str) -> bool;
 }
@@ -65,6 +68,15 @@ impl Runner for HostRunner {
             stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
         })
+    }
+
+    fn interactive(&self, program: &str, args: &[&str]) -> Result<i32> {
+        let status = match Command::new(program).args(args).status() {
+            Ok(s) => s,
+            Err(e) if e.kind() == ErrorKind::NotFound => bail!("this host has no `{program}`"),
+            Err(e) => return Err(e).with_context(|| format!("could not start `{program}`")),
+        };
+        Ok(status.code().unwrap_or(-1))
     }
 
     fn on_path(&self, program: &str) -> bool {

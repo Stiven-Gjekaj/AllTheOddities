@@ -21,9 +21,10 @@ pub struct FakeRunner {
 }
 
 impl FakeRunner {
-    /// The answer to the next call of `program` whose arguments start with
-    /// `prefix`. Answers for the same call are given in order. The last one
-    /// stays for each later call.
+    /// The answer to each call of `program` whose arguments start with
+    /// `prefix`. When several answers match, the longest prefix wins, and
+    /// then the newest answer. So a test can change one answer of a shared
+    /// set of answers.
     pub fn answer(&self, program: &str, prefix: &[&str], out: Output) {
         let prefix = prefix.iter().map(|s| (*s).to_owned()).collect();
         self.answers
@@ -47,23 +48,24 @@ impl Runner for FakeRunner {
         let mut call = vec![program.to_owned()];
         call.extend(args.iter().map(|s| (*s).to_owned()));
         self.calls.borrow_mut().push(call.clone());
-        let mut answers = self.answers.borrow_mut();
-        let matches = |(p, prefix, _): &(String, Vec<String>, Output)| {
-            p == program
-                && prefix.len() <= args.len()
-                && prefix.iter().zip(args).all(|(a, b)| a == b)
-        };
-        let found: Vec<usize> = answers
+        let answers = self.answers.borrow();
+        let best = answers
             .iter()
             .enumerate()
-            .filter(|(_, a)| matches(a))
-            .map(|(i, _)| i)
-            .collect();
-        match found.as_slice() {
-            [] => panic!("unexpected call: {}", call.join(" ")),
-            [only] => Ok(answers[*only].2.clone()),
-            [first, ..] => Ok(answers.remove(*first).2),
+            .filter(|(_, (p, prefix, _))| {
+                p == program
+                    && prefix.len() <= args.len()
+                    && prefix.iter().zip(args).all(|(a, b)| a == b)
+            })
+            .max_by_key(|(i, (_, prefix, _))| (prefix.len(), *i));
+        match best {
+            Some((_, (_, _, out))) => Ok(out.clone()),
+            None => panic!("unexpected call: {}", call.join(" ")),
         }
+    }
+
+    fn interactive(&self, program: &str, args: &[&str]) -> Result<i32> {
+        Ok(self.run(program, args)?.status)
     }
 
     fn on_path(&self, program: &str) -> bool {

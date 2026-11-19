@@ -134,6 +134,40 @@ pub fn record(ctx: &mut Ctx<'_>, oddity: &str, step: Undo) -> Result<()> {
     save(&path, &file)
 }
 
+/// Puts `body` in the managed block `name` of a file, and records how to
+/// revert it: a file that `odd` makes goes away on undo, and in a file of the
+/// person undo removes only the block. Gives true when the file changed.
+pub fn upsert_block(
+    ctx: &mut Ctx<'_>,
+    oddity: &str,
+    path: &Path,
+    name: &str,
+    body: &str,
+    before: &dyn Fn(&str) -> bool,
+) -> Result<bool> {
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    let new = crate::block::upsert_before(&text, name, body, "#", before);
+    if new == text {
+        return Ok(false);
+    }
+    let step = if path.exists() {
+        Undo::RemoveBlock {
+            path: path.to_owned(),
+            name: name.into(),
+            comment: "#".into(),
+        }
+    } else {
+        Undo::RestoreFile {
+            path: path.to_owned(),
+            before: None,
+            after_sha256: sha256_hex(new.as_bytes()),
+        }
+    };
+    record(ctx, oddity, step)?;
+    ctx.write_file(path, &new)?;
+    Ok(true)
+}
+
 /// Reverts the recorded steps of an oddity, newest first. `call` handles a
 /// [`Undo::Call`] step. The steps that it skips stay in the file.
 pub fn undo(

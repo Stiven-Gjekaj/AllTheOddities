@@ -155,24 +155,8 @@ fn add_to_profile(file: &std::path::Path, dir: &str, ctx: &mut Ctx<'_>) -> Resul
         return Ok(());
     }
     lines.push(line);
-    let new = crate::block::upsert(&text, NAME, &lines.join("\n"), "#");
-    // A file that odd makes goes away on undo. In a file of the person, undo
-    // removes only the block.
-    let step = if file.exists() {
-        Undo::RemoveBlock {
-            path: file.to_owned(),
-            name: NAME.into(),
-            comment: "#".into(),
-        }
-    } else {
-        Undo::RestoreFile {
-            path: file.to_owned(),
-            before: None,
-            after_sha256: state::sha256_hex(new.as_bytes()),
-        }
-    };
-    state::record(ctx, NAME, step)?;
-    ctx.write_file(file, &new)
+    state::upsert_block(ctx, NAME, file, NAME, &lines.join("\n"), &|_: &str| false)?;
+    Ok(())
 }
 
 /// A string in single quotes for fish, which takes `\'` and `\\` there.

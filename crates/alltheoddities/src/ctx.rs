@@ -48,6 +48,31 @@ impl Ctx<'_> {
         self.runner.run(program, args)
     }
 
+    /// Runs a command that changes the host on the terminal of the person,
+    /// so it can ask its own questions. In dry-run it prints the command.
+    pub fn interactive(&mut self, program: &str, args: &[&str]) -> Result<i32> {
+        if self.dry_run {
+            let line = std::iter::once(program)
+                .chain(args.iter().copied())
+                .collect::<Vec<_>>();
+            self.say(&format!("would run: {}", line.join(" ")));
+            return Ok(0);
+        }
+        self.runner.interactive(program, args)
+    }
+
+    /// Makes a directory and its parents. In dry-run it prints the path.
+    pub fn make_dir(&mut self, path: &Path) -> Result<()> {
+        if path.is_dir() {
+            return Ok(());
+        }
+        if self.dry_run {
+            self.say(&format!("would make: {}", path.display()));
+            return Ok(());
+        }
+        std::fs::create_dir_all(path).with_context(|| format!("could not make {}", path.display()))
+    }
+
     /// Writes a whole file, and makes its directories. In dry-run it prints
     /// the path.
     pub fn write_file(&mut self, path: &Path, text: &str) -> Result<()> {
