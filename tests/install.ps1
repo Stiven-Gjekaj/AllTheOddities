@@ -68,7 +68,9 @@ try {
     if (Test-Path (Join-Path (Join-Path (Join-Path $env:LOCALAPPDATA 'Programs') 'odd') 'odd.exe')) { Fail 'run once installed odd' }
 
     # a_bad_checksum_installs_nothing
-    $bad = (Get-Content (Join-Path $release 'SHA256SUMS')) | ForEach-Object { '0' + $_.Substring(1) }
+    # Change the first digit to another digit. A fixed '0' fails one time
+    # in 16, when the real checksum starts with 0.
+    $bad = (Get-Content (Join-Path $release 'SHA256SUMS')) | ForEach-Object { $(if ($_[0] -eq '0') { '1' } else { '0' }) + $_.Substring(1) }
     Set-Content -Path (Join-Path $release 'SHA256SUMS') -Value ($bad -join "`n")
     $env:LOCALAPPDATA = Join-Path $work 'local3'
     $out = (& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'install.ps1') 2>&1) -join "`n"

@@ -45,7 +45,9 @@ echo "$out" | grep -q "fake odd: ssh --out" || fail "odd did not run with the ar
 [ ! -e "$home/.local/bin/odd" ] || fail "run once installed odd"
 
 # a_bad_checksum_installs_nothing
-sed 's/^./0/' "$release/SHA256SUMS" > "$work/bad" && mv "$work/bad" "$release/SHA256SUMS"
+# Change the first digit to another digit. A fixed 0 fails one time in 16,
+# when the real checksum starts with 0.
+awk '{ c = substr($0, 1, 1); print (c == "0" ? "1" : "0") substr($0, 2) }' "$release/SHA256SUMS" > "$work/bad" && mv "$work/bad" "$release/SHA256SUMS"
 home="$work/home3"; mkdir -p "$home"
 if out=$(HOME="$home" sh "$root/install.sh" 2>&1); then fail "a bad checksum exited 0"; fi
 echo "$out" | grep -q "does not match SHA256SUMS" || fail "no checksum message: $out"
