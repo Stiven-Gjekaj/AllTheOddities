@@ -278,6 +278,27 @@ group needs `C:\ProgramData\ssh\administrators_authorized_keys` with the
 correct access list, and not `~/.ssh/authorized_keys`. `odd` writes the file
 that applies.
 
+**Keys only.** The owner picked this: after the "in" part, the SSH server
+accepts keys only, and refuses passwords. A wrong step here locks the user
+out, so `odd` follows this order:
+
+1. It turns off passwords only if the list of authorized keys has at least
+   one key after the "in" part. Otherwise it stops, keeps passwords on, and
+   says why.
+2. It writes `PasswordAuthentication no` and
+   `KbdInteractiveAuthentication no`. On macOS and Linux it writes them to a
+   file of its own, `/etc/ssh/sshd_config.d/50-odd.conf`, when the main
+   config includes that directory. Otherwise, and on Windows, it adds the two
+   lines in a managed block near the top of `sshd_config`, before the first
+   `Match` line, because a line after `Match` applies only to that match.
+3. It runs `sshd -t` to check the config. If the check fails, it puts back
+   the old config and stops.
+4. It restarts the server, and tells the user to test a key login from a
+   second window before they close the first one.
+
+`--keep-passwords` skips this part. `--undo` removes the file or the block,
+and restarts the server.
+
 **Tailscale: reach this computer from anywhere.** If the host has no
 Tailscale, `odd` asks, then installs it with the official way for the host:
 the install script of Tailscale on Linux, the package from
@@ -299,8 +320,8 @@ and the command to connect: `ssh <user>@<name>`.
 connections in place of sshd. It is on macOS and Linux only, because Tailscale
 SSH has no server on Windows.
 
-`odd ssh --undo` turns off what `odd` turned on: the server, the firewall
-rule, the authorized keys that it added, and `tailscale logout`. It keeps the
+`odd ssh --undo` turns off what `odd` turned on: the server, the keys-only
+setting, the firewall rule, the authorized keys that it added, and `tailscale logout`. It keeps the
 key pair, because a key that is deleted cannot come back.
 
 ### 7.2 Calls the agent made for the other oddities
