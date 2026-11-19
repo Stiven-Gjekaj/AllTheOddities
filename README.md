@@ -27,7 +27,7 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 
 > [!NOTE]
 > **Before the first release.**
-> `odd path` and `odd ssh` work, and each oddity is **experimental**: its
+> Eight oddities work, and each one is **experimental**: its
 > flags and its output can change. The first release, `2026.MM.0 "Astrolabe"`,
 > comes with 20 oddities. [docs/releasing.md](docs/releasing.md) gives the
 > rules of the versions and the labels.
@@ -117,6 +117,12 @@ check.
 | :-- | :-- | :-- | :-- |
 | `odd ssh` | Makes SSH ready: connect out to GitHub, let others connect in, and join Tailscale | all | experimental |
 | `odd path` | Adds a directory to the PATH of the user for good, and lists the PATH | all | experimental |
+| `odd git` | Sets the commit name and email for each folder, and signs commits with the SSH key | all | experimental |
+| `odd env` | Sets an environment variable of the user for good | all | experimental |
+| `odd tweaks` | Applies the developer settings of a fresh computer, such as hidden files and long paths | all | experimental |
+| `odd hostname` | Sets the name of the computer in each place that the host keeps it | all | experimental |
+| `odd hosts` | Adds and removes entries of the hosts file, in a block that `odd` manages | all | experimental |
+| `odd dns` | Sets the DNS servers of the network in use, with presets | all | experimental |
 
 `odd list` shows each oddity of your build. `odd <oddity> --help` gives its
 options. [docs/oddities.md](docs/oddities.md) says what each one changes on
@@ -161,6 +167,21 @@ odd path add ~/tools/bin
 odd path list
 odd path --undo
 ```
+
+### The others
+
+```bash
+odd git add ~/work --name "Ann Lee" --email ann@work.example --sign
+odd env set EDITOR nvim
+odd tweaks                      # the tweaks of this host, on or off
+odd tweaks apply --user-only    # the ones that need no administrator
+sudo odd hostname studio
+sudo odd hosts add 10.0.0.5 nas nas.lan
+sudo odd dns set cloudflare
+sudo odd dns reset              # back to the servers of DHCP
+```
+
+Each one takes `--dry-run` and `--undo`.
 
 ---
 
