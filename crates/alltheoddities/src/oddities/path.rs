@@ -1,7 +1,5 @@
 //! `odd path`: add a directory to the PATH of the user for good.
 
-use std::path::PathBuf;
-
 use anyhow::{Result, bail};
 use clap::{Arg, ArgMatches, Command};
 
@@ -135,25 +133,11 @@ fn add(dir: &str, ctx: &mut Ctx<'_>) -> Result<()> {
     if shell.ends_with("fish") {
         return fish_add(dir, ctx);
     }
-    for file in profiles(ctx, &shell) {
+    for file in crate::profile::profiles(ctx, &shell) {
         add_to_profile(&file, dir, ctx)?;
     }
     ctx.say(&format!("{dir} is on PATH in each new shell."));
     Ok(())
-}
-
-/// The files that a login shell reads. bash reads ~/.bash_profile in place
-/// of ~/.profile when it exists, and zsh reads ~/.zprofile.
-fn profiles(ctx: &Ctx<'_>, shell: &str) -> Vec<PathBuf> {
-    let mut files = vec![ctx.home.join(".profile")];
-    if shell.ends_with("zsh") {
-        files.push(ctx.home.join(".zprofile"));
-    }
-    let bash_profile = ctx.home.join(".bash_profile");
-    if shell.ends_with("bash") && bash_profile.exists() {
-        files.push(bash_profile);
-    }
-    files
 }
 
 fn add_to_profile(file: &std::path::Path, dir: &str, ctx: &mut Ctx<'_>) -> Result<()> {
@@ -175,13 +159,8 @@ fn add_to_profile(file: &std::path::Path, dir: &str, ctx: &mut Ctx<'_>) -> Resul
     Ok(())
 }
 
-/// A string in single quotes for fish, which takes `\'` and `\\` there.
-fn fish_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
-}
-
 fn fish_add(dir: &str, ctx: &mut Ctx<'_>) -> Result<()> {
-    let q = fish_quote(dir);
+    let q = crate::profile::fish_quote(dir);
     let undo = format!("set -U fish_user_paths (string match -v -- {q} $fish_user_paths)");
     state::record(
         ctx,
@@ -203,44 +182,15 @@ const ENV_KEY: &str = r"HKCU\Environment";
 
 /// The user Path of Windows, as the registry keeps it, with %VARIABLES%.
 fn windows_read(ctx: &Ctx<'_>) -> Result<String> {
-    let out = ctx.query("reg", &["query", ENV_KEY, "/v", "Path"])?;
-    if !out.success() {
-        return Ok(String::new());
-    }
-    Ok(out
-        .stdout
-        .lines()
-        .find_map(|l| {
-            let l = l.trim_start();
-            let rest = l.strip_prefix("Path")?.trim_start();
-            let rest = rest
-                .strip_prefix("REG_EXPAND_SZ")
-                .or_else(|| rest.strip_prefix("REG_SZ"))?;
-            Some(rest.trim().to_owned())
-        })
+    Ok(crate::winreg::read(ctx, ENV_KEY, "Path")?
+        .map(|(_, data)| data)
         .unwrap_or_default())
 }
 
 fn windows_write(value: &str, ctx: &mut Ctx<'_>) -> Result<()> {
-    let out = ctx.change(
-        "reg",
-        &[
-            "add",
-            ENV_KEY,
-            "/v",
-            "Path",
-            "/t",
-            "REG_EXPAND_SZ",
-            "/d",
-            value,
-            "/f",
-        ],
-    )?;
-    if !out.success() {
-        bail!("reg add failed: {}", out.stderr.trim());
-    }
+    crate::winreg::write(ctx, ENV_KEY, "Path", "REG_EXPAND_SZ", value)?;
     if !ctx.dry_run {
-        broadcast_change();
+        crate::winreg::broadcast_change();
     }
     Ok(())
 }
@@ -281,33 +231,6 @@ fn windows_remove(dir: &str, ctx: &mut Ctx<'_>) -> Result<()> {
         .collect();
     windows_write(&kept.join(";"), ctx)
 }
-
-/// Tells open programs, such as Explorer, that the environment changed.
-#[cfg(windows)]
-#[allow(unsafe_code)]
-fn broadcast_change() {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{
-        HWND_BROADCAST, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_SETTINGCHANGE,
-    };
-    let what: Vec<u16> = "Environment\0".encode_utf16().collect();
-    let mut result = 0;
-    // SAFETY: `what` is a NUL-terminated UTF-16 string that lives for the
-    // call, and `result` is a valid place for the answer.
-    unsafe {
-        SendMessageTimeoutW(
-            HWND_BROADCAST,
-            WM_SETTINGCHANGE,
-            0,
-            what.as_ptr() as isize,
-            SMTO_ABORTIFHUNG,
-            5000,
-            &mut result,
-        );
-    }
-}
-
-#[cfg(not(windows))]
-fn broadcast_change() {}
 
 fn list(ctx: &mut Ctx<'_>) {
     let os = ctx.host.os;

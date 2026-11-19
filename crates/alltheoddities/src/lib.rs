@@ -12,11 +12,13 @@ pub mod host;
 pub mod net;
 pub mod oddities;
 pub mod oddity;
+pub mod profile;
 pub mod run;
 pub mod state;
 #[cfg(test)]
 pub mod testing;
 pub mod version;
+pub mod winreg;
 
 /// Run the command that the person typed, and give the exit code.
 pub fn run() -> i32 {
