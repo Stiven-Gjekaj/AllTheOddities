@@ -5,6 +5,7 @@
 //! computer from anywhere). With no part flag, `odd ssh` asks about each.
 
 pub mod keys;
+pub mod keys_only;
 pub mod out;
 pub mod server;
 
@@ -159,11 +160,15 @@ impl Oddity for Ssh {
                     .ask
                     .text("Which GitHub user may log in with their public keys?", None),
             };
-            match user {
-                Some(user) => {
-                    keys::add_from_github(ctx, &user)?;
+            let count = match user {
+                Some(user) => keys::add_from_github(ctx, &user).map_err(|e| format!("{e:#}")),
+                None => {
+                    ctx.say("No GitHub user: odd adds no key.");
+                    Ok(keys::count(ctx))
                 }
-                None => ctx.say("No GitHub user: odd adds no key."),
+            };
+            if !m.get_flag("keep-passwords") {
+                keys_only::apply(ctx, count)?;
             }
         }
         Ok(exit)

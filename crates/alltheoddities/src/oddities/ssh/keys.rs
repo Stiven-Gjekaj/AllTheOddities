@@ -20,6 +20,17 @@ pub fn authorized_keys_path(ctx: &Ctx<'_>) -> PathBuf {
     }
 }
 
+/// The number of keys in the file of the keys that may log in.
+pub fn count(ctx: &Ctx<'_>) -> usize {
+    std::fs::read_to_string(authorized_keys_path(ctx))
+        .map(|t| {
+            t.lines()
+                .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+                .count()
+        })
+        .unwrap_or(0)
+}
+
 /// Adds each public key of a GitHub user that the file does not have.
 /// Gives the number of keys in the file after the step.
 pub fn add_from_github(ctx: &mut Ctx<'_>, user: &str) -> Result<usize> {
