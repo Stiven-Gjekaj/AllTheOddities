@@ -209,9 +209,6 @@ mod tests {
                 .iter()
                 .any(|c| c.iter().any(|a| a.contains("Disable-NetFirewallRule")))
         );
-        assert_eq!(
-            calls.iter().filter(|c| c[1] == "add").last().unwrap()[8],
-            "0x1"
-        );
+        assert_eq!(calls.iter().rfind(|c| c[1] == "add").unwrap()[8], "0x1");
     }
 }
