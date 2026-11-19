@@ -75,3 +75,27 @@ What each oddity cannot do on each host, and what the tests do not cover.
 - On Linux, `odd dns` needs NetworkManager, and sets IPv4 servers only.
 - On Windows, `odd` reads the static servers from the registry key of the
   interface. A VPN that sets its own servers can hide them.
+
+## odd wifi-pass
+
+- On Windows, `odd` reads the English labels of `netsh` (`SSID`,
+  `Key Content`). On Windows in another language, it does not find them.
+- On Linux, reading a password can need `sudo`.
+
+## odd share
+
+- One file at a time goes in memory before it goes out, so a very large file
+  needs as much free memory.
+- The link uses HTTP, not HTTPS. The token keeps strangers out, but a device
+  on the same network can read the traffic.
+
+## odd carry
+
+- Both computers need Tailscale on the same tailnet. On Linux,
+  `tailscale file get` needs `sudo`, or `tailscale set --operator=$USER`.
+- The unpacked files stay in the staging folder after a receive.
+
+## odd remote
+
+- macOS can refuse to turn on Screen Sharing from a terminal. Then turn it on
+  in System Settings.
