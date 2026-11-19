@@ -99,6 +99,37 @@ impl Ctx<'_> {
         std::fs::write(path, text).with_context(|| format!("could not write {}", path.display()))
     }
 
+    /// Copies the bytes of a file, and makes the folders of `to`. In dry-run
+    /// it prints the two paths.
+    pub fn copy_file(&mut self, from: &Path, to: &Path) -> Result<()> {
+        if self.dry_run {
+            self.say(&format!(
+                "would copy: {} to {}",
+                from.display(),
+                to.display()
+            ));
+            return Ok(());
+        }
+        if let Some(dir) = to.parent() {
+            std::fs::create_dir_all(dir)
+                .with_context(|| format!("could not make {}", dir.display()))?;
+        }
+        std::fs::copy(from, to).with_context(|| format!("could not copy to {}", to.display()))?;
+        Ok(())
+    }
+
+    /// Deletes a folder and each thing in it. A link goes as a link: its
+    /// target stays. In dry-run it prints the path.
+    pub fn remove_dir(&mut self, path: &Path) -> Result<()> {
+        if self.dry_run {
+            self.say(&format!("would delete: {}", path.display()));
+            return Ok(());
+        }
+        // remove_dir_all deletes a link, and does not follow it.
+        std::fs::remove_dir_all(path)
+            .with_context(|| format!("could not delete {}", path.display()))
+    }
+
     /// Deletes a file. In dry-run it prints the path.
     pub fn remove_file(&mut self, path: &Path) -> Result<()> {
         if self.dry_run {
@@ -167,6 +198,46 @@ mod tests {
             .answer("systemctl", &["start"], crate::run::Output::ok(""));
         t.ctx().change("systemctl", &["start", "ssh"]).unwrap();
         assert_eq!(t.runner.calls().len(), 1);
+    }
+
+    #[test]
+    fn copy_file_copies_bytes() {
+        let mut t = TestCtx::new(Os::Linux);
+        let from = t.dir.path().join("a.bin");
+        std::fs::write(&from, [0u8, 255, 7]).unwrap();
+        let to = t.home().join("x/y/a.bin");
+        t.ctx().copy_file(&from, &to).unwrap();
+        assert_eq!(std::fs::read(&to).unwrap(), [0u8, 255, 7]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn remove_dir_keeps_the_target_of_a_link() {
+        let mut t = TestCtx::new(Os::Linux);
+        let target = t.dir.path().join("target");
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::write(target.join("keep.txt"), "x").unwrap();
+        let cache = t.dir.path().join("cache");
+        std::fs::create_dir_all(cache.join("sub")).unwrap();
+        std::fs::write(cache.join("sub/f"), "y").unwrap();
+        std::os::unix::fs::symlink(&target, cache.join("link")).unwrap();
+        t.ctx().remove_dir(&cache).unwrap();
+        assert!(!cache.exists());
+        assert!(target.join("keep.txt").exists());
+    }
+
+    #[test]
+    fn dry_run_copies_and_removes_nothing() {
+        let mut t = TestCtx::new(Os::Linux);
+        t.dry_run = true;
+        let from = t.dir.path().join("a");
+        std::fs::write(&from, "x").unwrap();
+        let dir = t.dir.path().join("d");
+        std::fs::create_dir_all(&dir).unwrap();
+        let to = t.home().join("b");
+        t.ctx().copy_file(&from, &to).unwrap();
+        t.ctx().remove_dir(&dir).unwrap();
+        assert!(!to.exists() && dir.exists());
     }
 
     #[test]
