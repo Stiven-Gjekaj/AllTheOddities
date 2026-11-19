@@ -45,7 +45,7 @@ pub fn apply(ctx: &mut Ctx<'_>, keys: Result<usize, String>) -> Result<()> {
         let l = l.trim();
         l.starts_with("Include") && l.contains("sshd_config.d")
     });
-    let drop_in = ctx.sys_path("/etc/ssh/sshd_config.d/50-odd.conf");
+    let drop_in = ctx.sys_path("/etc/ssh/sshd_config.d/00-odd.conf");
     let (path, before, new) = if includes_dir && ctx.host.os != Os::Windows {
         let before = std::fs::read_to_string(&drop_in).ok();
         let body = format!("# odd ssh: keys only. odd ssh --undo removes this file.\n{BODY}\n");
@@ -66,7 +66,28 @@ pub fn apply(ctx: &mut Ctx<'_>, keys: Result<usize, String>) -> Result<()> {
         } else {
             SSHD_UNIX
         };
-        let check = ctx.query(sshd, &["-t"]);
+        let check = ctx.query(sshd, &["-t"]).and_then(|o| {
+            if !o.success() {
+                return Ok(o);
+            }
+            // sshd keeps the first value that it reads. Another file, such as
+            // 50-cloud-init.conf of Ubuntu, can turn passwords on first. Ask
+            // sshd for the value that it uses.
+            let effective = ctx.query(sshd, &["-T"])?;
+            let on = effective
+                .stdout
+                .lines()
+                .map(|l| l.trim().to_lowercase())
+                .find(|l| l.starts_with("passwordauthentication "))
+                .filter(|l| l != "passwordauthentication no");
+            Ok(match on {
+                Some(line) => crate::run::Output::fail(
+                    1,
+                    &format!("another file wins: sshd still says {line}"),
+                ),
+                None => effective,
+            })
+        });
         let good = check.as_ref().is_ok_and(|o| o.success());
         if !good {
             match &before {
@@ -77,7 +98,7 @@ pub fn apply(ctx: &mut Ctx<'_>, keys: Result<usize, String>) -> Result<()> {
                 Ok(o) => o.stderr.trim().to_owned(),
                 Err(e) => format!("{e:#}"),
             };
-            bail!("sshd refused the new config, so odd put back the old one: {why}");
+            bail!("the config did not turn off passwords, so odd put back the old one: {why}");
         }
     }
     // Recorded after the check, so a config that odd put back leaves no step.
@@ -110,6 +131,10 @@ mod tests {
         std::fs::write(&path, config).unwrap();
         t.runner.answer(SSHD_UNIX, &["-t"], Output::ok(""));
         t.runner.answer(SSHD_WINDOWS, &["-t"], Output::ok(""));
+        let effective = "port 22\npasswordauthentication no\nkbdinteractiveauthentication no\n";
+        t.runner.answer(SSHD_UNIX, &["-T"], Output::ok(effective));
+        t.runner
+            .answer(SSHD_WINDOWS, &["-T"], Output::ok(effective));
         t.runner.answer("systemctl", &[], Output::ok(""));
         t.runner.answer("powershell", &[], Output::ok(""));
         t
@@ -130,7 +155,7 @@ mod tests {
     fn no_keys_keeps_passwords_on() {
         let mut t = host(Os::Linux, WITH_INCLUDE);
         apply(&mut t.ctx(), Ok(0)).unwrap();
-        assert!(!t.sys("/etc/ssh/sshd_config.d/50-odd.conf").exists());
+        assert!(!t.sys("/etc/ssh/sshd_config.d/00-odd.conf").exists());
         assert!(!checked(&t));
         assert!(t.output().contains("Passwords stay on"), "{}", t.output());
     }
@@ -151,10 +176,38 @@ mod tests {
     fn uses_the_drop_in_when_the_config_includes_it() {
         let mut t = host(Os::Linux, WITH_INCLUDE);
         apply(&mut t.ctx(), Ok(1)).unwrap();
-        let drop_in = std::fs::read_to_string(t.sys("/etc/ssh/sshd_config.d/50-odd.conf")).unwrap();
+        let drop_in = std::fs::read_to_string(t.sys("/etc/ssh/sshd_config.d/00-odd.conf")).unwrap();
         assert!(drop_in.contains("PasswordAuthentication no"), "{drop_in}");
         assert_eq!(config(&mut t), WITH_INCLUDE);
         assert!(t.output().contains("second window"), "{}", t.output());
+    }
+
+    #[test]
+    fn another_file_that_turns_passwords_on_puts_back_the_config() {
+        let mut t = host(Os::Linux, WITH_INCLUDE);
+        t.runner.answer(
+            SSHD_UNIX,
+            &["-T"],
+            Output::ok("passwordauthentication yes\n"),
+        );
+        let err = apply(&mut t.ctx(), Ok(1)).unwrap_err().to_string();
+        assert!(err.contains("passwordauthentication yes"), "{err}");
+        assert!(!t.sys("/etc/ssh/sshd_config.d/00-odd.conf").exists());
+        assert!(
+            !t.runner.calls().iter().any(|c| c[0] == "systemctl"),
+            "no restart"
+        );
+    }
+
+    #[test]
+    fn the_drop_in_sorts_before_the_files_of_the_distribution() {
+        // sshd keeps the first value that it reads, and it reads the files of
+        // the directory in name order. 50-cloud-init.conf of Ubuntu says yes.
+        let mut t = host(Os::Linux, WITH_INCLUDE);
+        apply(&mut t.ctx(), Ok(1)).unwrap();
+        let name = "00-odd.conf";
+        assert!(name < "50-cloud-init.conf");
+        assert!(t.sys("/etc/ssh/sshd_config.d").join(name).exists());
     }
 
     #[test]
@@ -164,7 +217,7 @@ mod tests {
             "#Include /etc/ssh/sshd_config.d/*.conf\nPort 22\n",
         );
         apply(&mut t.ctx(), Ok(1)).unwrap();
-        assert!(!t.sys("/etc/ssh/sshd_config.d/50-odd.conf").exists());
+        assert!(!t.sys("/etc/ssh/sshd_config.d/00-odd.conf").exists());
         assert!(config(&mut t).contains("PasswordAuthentication no"));
     }
 
@@ -207,6 +260,6 @@ mod tests {
         apply(&mut t.ctx(), Ok(1)).unwrap();
         let mut none = |_: &str, _: &str, _: &mut crate::ctx::Ctx<'_>| Ok(());
         crate::state::undo(&mut t.ctx(), "ssh", &mut none).unwrap();
-        assert!(!t.sys("/etc/ssh/sshd_config.d/50-odd.conf").exists());
+        assert!(!t.sys("/etc/ssh/sshd_config.d/00-odd.conf").exists());
     }
 }
