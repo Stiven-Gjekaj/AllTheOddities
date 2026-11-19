@@ -89,6 +89,24 @@ pub fn same_entry(a: &str, b: &str, os: Os) -> bool {
     norm(a, os) == norm(b, os)
 }
 
+/// True when `dir` is a full path on `os`: it starts with `/` on macOS and
+/// Linux, and with a drive, such as `C:\`, or a share, such as `\\server`, on
+/// Windows. It follows the system that `odd` serves, not the system that
+/// runs a test.
+pub fn is_full_path(dir: &str, os: Os) -> bool {
+    match os {
+        Os::Windows => {
+            let b = dir.as_bytes();
+            let drive = b.len() >= 3
+                && b[0].is_ascii_alphabetic()
+                && b[1] == b':'
+                && matches!(b[2], b'\\' | b'/');
+            drive || dir.starts_with(r"\\")
+        }
+        _ => dir.starts_with('/'),
+    }
+}
+
 fn separator(os: Os) -> char {
     if os == Os::Windows { ';' } else { ':' }
 }
@@ -103,9 +121,7 @@ fn entries(ctx: &Ctx<'_>) -> Vec<String> {
 
 fn add(dir: &str, ctx: &mut Ctx<'_>) -> Result<()> {
     let os = ctx.host.os;
-    let absolute = std::path::Path::new(dir).is_absolute()
-        || (os == Os::Windows && dir.len() > 2 && dir.as_bytes()[1] == b':');
-    if !absolute {
+    if !is_full_path(dir, os) {
         bail!("give the full path of the directory, not {dir}");
     }
     if entries(ctx).iter().any(|e| same_entry(e, dir, os)) {
@@ -344,6 +360,17 @@ mod tests {
         assert!(same_entry(r"C:\Tools", r"c:\tools\", Os::Windows));
         assert!(same_entry(r"C:\Tools", "C:/Tools", Os::Windows));
         assert!(!same_entry("/Tools", "/tools", Os::Linux));
+    }
+
+    #[test]
+    fn a_full_path_follows_the_system_of_odd_not_of_the_test() {
+        assert!(is_full_path("/opt/x", Os::Linux));
+        assert!(!is_full_path("opt/x", Os::Linux));
+        assert!(is_full_path(r"C:\Tools", Os::Windows));
+        assert!(is_full_path("c:/Tools", Os::Windows));
+        assert!(is_full_path(r"\\server\share", Os::Windows));
+        assert!(!is_full_path(r"Tools\bin", Os::Windows));
+        assert!(!is_full_path("/opt/x", Os::Windows));
     }
 
     #[test]
