@@ -10,6 +10,7 @@ pub mod hostname;
 pub mod hosts;
 pub mod list;
 pub mod path;
+pub mod remote;
 pub mod share;
 pub mod ssh;
 pub mod tweaks;
