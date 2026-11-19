@@ -20,7 +20,9 @@ HOME="$home" sh "$script" -N -o -c test@test >/dev/null
 [ -f "$home/.ssh/id_ed25519.pub" ] || fail "no public key"
 grep -q 'test@test' "$home/.ssh/id_ed25519.pub" || fail "the comment is not in the key"
 
-perm() { stat -f %Lp "$1" 2>/dev/null || stat -c %a "$1"; }
+# GNU stat takes -c. BSD stat takes -f, and GNU stat reads -f as "file system",
+# so try GNU first.
+perm() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 [ "$(perm "$home/.ssh")" = 700 ] || fail "~/.ssh is not 700"
 [ "$(perm "$home/.ssh/id_ed25519")" = 600 ] || fail "the key is not 600"
 [ "$(perm "$home/.ssh/config")" = 600 ] || fail "the config is not 600"
