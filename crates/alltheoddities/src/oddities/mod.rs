@@ -2,6 +2,7 @@
 
 pub mod dns;
 pub mod env;
+pub mod expose;
 pub mod firewall;
 pub mod git;
 pub mod hostname;

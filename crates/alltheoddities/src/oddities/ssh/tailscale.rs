@@ -18,8 +18,9 @@ const WINDOWS_CLI: &str = r"C:\Program Files\Tailscale\tailscale.exe";
 const MAC_PKG: &str = "https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg";
 const KEYS_PAGE: &str = "https://login.tailscale.com/admin/settings/keys";
 
-/// The Tailscale CLI of this host, if it has one.
-fn cli(ctx: &Ctx<'_>) -> Option<String> {
+/// The Tailscale CLI of this host, if it has one. odd expose and odd carry
+/// use it too.
+pub fn cli(ctx: &Ctx<'_>) -> Option<String> {
     if ctx.runner.on_path("tailscale") {
         return Some("tailscale".into());
     }
