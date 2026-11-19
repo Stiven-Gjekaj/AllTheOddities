@@ -92,6 +92,22 @@ the latest release, and checks it against `SHA256SUMS`. A binary that does not
 match stops the install. Then it puts `odd` in `~/.local/bin`, or in
 `%LOCALAPPDATA%\Programs\odd`, and adds that directory to your PATH.
 
+### With a package manager
+
+On a computer that has Homebrew (macOS, Linux) or Scoop (Windows):
+
+```bash
+brew install stiven-gjekaj/tap/alltheoddities
+```
+
+```powershell
+scoop bucket add stiven-gjekaj https://github.com/Stiven-Gjekaj/scoop-bucket
+scoop install stiven-gjekaj/alltheoddities
+```
+
+Then the package manager updates `odd`: use `brew upgrade` or
+`scoop update`, and not `odd update`.
+
 ### Run one time
 
 On a computer that you only set up, run `odd` one time and install nothing:
