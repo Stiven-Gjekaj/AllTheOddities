@@ -1,0 +1,8 @@
+# Operating system files.
+.DS_Store
+Thumbs.db
+
+# Editor and tool directories. AGENTS.md holds the rules for an assistant.
+.idea/
+.vscode/
+.claude/
