@@ -16,10 +16,10 @@ const CAPABILITY_ADD: &str = "Add-WindowsCapability -Online -Name OpenSSH.Server
 const FIREWALL_RULE: &str = "OpenSSH-Server-In-TCP";
 
 /// The config file of the SSH server.
-pub fn config_path(os: Os) -> PathBuf {
-    match os {
-        Os::Windows => PathBuf::from(r"C:\ProgramData\ssh\sshd_config"),
-        _ => PathBuf::from("/etc/ssh/sshd_config"),
+pub fn config_path(ctx: &Ctx<'_>) -> PathBuf {
+    match ctx.host.os {
+        Os::Windows => ctx.sys_path(r"C:\ProgramData\ssh\sshd_config"),
+        _ => ctx.sys_path("/etc/ssh/sshd_config"),
     }
 }
 

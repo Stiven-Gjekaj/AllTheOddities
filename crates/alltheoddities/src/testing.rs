@@ -189,6 +189,7 @@ impl TestCtx {
             home: self.home(),
             state_dir: self.state_dir(),
             env: self.env.clone(),
+            root: Some(self.dir.path().join("sys")),
             is_admin: self.is_admin,
             runner: &self.runner,
             ask: &self.ask,

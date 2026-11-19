@@ -4,6 +4,7 @@
 //! in (let other computers connect to this one), and Tailscale (reach this
 //! computer from anywhere). With no part flag, `odd ssh` asks about each.
 
+pub mod keys;
 pub mod out;
 pub mod server;
 
@@ -152,7 +153,69 @@ impl Oddity for Ssh {
         }
         if parts.inbound {
             server::enable(ctx)?;
+            let user = match m.get_one::<String>("github-user") {
+                Some(u) => Some(u.clone()),
+                None => ctx
+                    .ask
+                    .text("Which GitHub user may log in with their public keys?", None),
+            };
+            match user {
+                Some(user) => {
+                    keys::add_from_github(ctx, &user)?;
+                }
+                None => ctx.say("No GitHub user: odd adds no key."),
+            }
         }
         Ok(exit)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::exit::Exit;
+    use crate::host::Os;
+    use crate::oddity::dispatch;
+    use crate::run::Output;
+    use crate::testing::TestCtx;
+
+    fn odd(t: &mut TestCtx, args: &[&str]) -> Exit {
+        let argv = ["odd", "ssh"].iter().chain(args).map(Into::into).collect();
+        dispatch(argv, &mut t.ctx(), &[&super::Ssh])
+    }
+
+    fn linux_server_on() -> TestCtx {
+        let mut t = TestCtx::new(Os::Linux);
+        t.distro = Some("ubuntu".into());
+        t.runner.answer("systemctl", &[], Output::ok("active\n"));
+        t.runner.answer("chmod", &[], Output::ok(""));
+        t.http
+            .page("https://github.com/you.keys", "ssh-ed25519 AAAA1\n");
+        t
+    }
+
+    #[test]
+    fn in_asks_for_the_github_user() {
+        let mut t = linux_server_on();
+        t.ask.push("you");
+        odd(&mut t, &["--in", "--keep-passwords"]);
+        assert!(t.home().join(".ssh/authorized_keys").exists());
+    }
+
+    #[test]
+    fn in_takes_the_github_user_flag() {
+        let mut t = linux_server_on();
+        odd(
+            &mut t,
+            &["--in", "--keep-passwords", "--github-user", "you"],
+        );
+        assert!(t.home().join(".ssh/authorized_keys").exists());
+    }
+
+    #[test]
+    fn in_without_admin_exits_3() {
+        let mut t = linux_server_on();
+        t.is_admin = false;
+        assert_eq!(odd(&mut t, &["--in"]), Exit::NeedsAdmin);
+        assert!(t.runner.calls().is_empty());
     }
 }

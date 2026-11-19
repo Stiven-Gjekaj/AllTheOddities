@@ -21,6 +21,9 @@ pub struct Ctx<'a> {
     pub home: PathBuf,
     pub state_dir: PathBuf,
     pub env: HashMap<String, String>,
+    /// A directory that stands for `/` or `C:\`, for the tests. None in a
+    /// real run.
+    pub root: Option<PathBuf>,
     pub is_admin: bool,
     pub runner: &'a dyn Runner,
     pub ask: &'a dyn Ask,
@@ -30,6 +33,15 @@ pub struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
+    /// The path of a file of the system, such as `/etc/ssh/sshd_config`. A
+    /// test puts it under its temporary directory.
+    pub fn sys_path(&self, path: &str) -> PathBuf {
+        match &self.root {
+            Some(root) => root.join(path.trim_start_matches(['/', '\\'])),
+            None => PathBuf::from(path),
+        }
+    }
+
     /// Runs a command that only reads. It runs in dry-run too.
     pub fn query(&self, program: &str, args: &[&str]) -> Result<Output> {
         self.runner.run(program, args)

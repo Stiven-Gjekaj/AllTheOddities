@@ -8,14 +8,43 @@ pub trait Http {
     fn get_bytes(&self, url: &str) -> Result<Vec<u8>>;
 }
 
-/// The client of a build with no network. A later step replaces it.
-pub struct NoHttp;
+/// Reads with the `curl` of the host, or `wget` when the host has no curl.
+///
+/// macOS, Windows 10 and later, and most Linux hosts have curl. A Rust TLS
+/// library would compile C code for each target, which the release builds
+/// do not allow.
+pub struct HostHttp;
 
-impl Http for NoHttp {
-    fn get(&self, _url: &str) -> Result<String> {
-        bail!("this build has no network")
+impl Http for HostHttp {
+    fn get(&self, url: &str) -> Result<String> {
+        String::from_utf8(self.get_bytes(url)?)
+            .map_err(|_| anyhow::anyhow!("{url} gave text that is not UTF-8"))
     }
-    fn get_bytes(&self, _url: &str) -> Result<Vec<u8>> {
-        bail!("this build has no network")
+
+    fn get_bytes(&self, url: &str) -> Result<Vec<u8>> {
+        use std::process::{Command, Stdio};
+        if !url.starts_with("https://") {
+            bail!("odd reads HTTPS only, not {url}");
+        }
+        let tries: [(&str, Vec<&str>); 2] = [
+            ("curl", vec!["-fsSL", "--proto", "=https", "--tlsv1.2", url]),
+            ("wget", vec!["-qO-", "--https-only", url]),
+        ];
+        for (program, args) in tries {
+            match Command::new(program)
+                .args(&args)
+                .stdin(Stdio::null())
+                .output()
+            {
+                Ok(out) if out.status.success() => return Ok(out.stdout),
+                Ok(out) => {
+                    let why = String::from_utf8_lossy(&out.stderr);
+                    bail!("{program} could not read {url}: {}", why.trim());
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => bail!("could not start {program}: {e}"),
+            }
+        }
+        bail!("this host has no curl and no wget, so odd cannot read {url}")
     }
 }

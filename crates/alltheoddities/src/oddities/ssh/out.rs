@@ -14,6 +14,12 @@ use super::NAME;
 
 /// Does the out part. Gives `Exit::Failed` when GitHub does not accept the key.
 pub fn run(m: &ArgMatches, ctx: &mut Ctx<'_>) -> Result<Exit> {
+    // Under sudo, the key and the config would belong to root, and the
+    // person could not use them.
+    if ctx.host.os != Os::Windows && ctx.env.contains_key("SUDO_USER") {
+        ctx.say("Run odd ssh --out without sudo, so the key belongs to you. It changed nothing.");
+        return Ok(Exit::Usage);
+    }
     let key = super::key_path(m, ctx);
     let os = ctx.host.os;
     let ssh_dir = key
@@ -309,6 +315,15 @@ mod tests {
 
     fn config(t: &TestCtx) -> String {
         std::fs::read_to_string(t.home().join(".ssh/config")).unwrap()
+    }
+
+    #[test]
+    fn under_sudo_out_stops_before_a_change() {
+        let mut t = host(Os::Linux);
+        t.env.insert("SUDO_USER".into(), "you".into());
+        assert_eq!(odd(&mut t, &[]), Exit::Usage);
+        assert!(t.runner.calls().is_empty());
+        assert!(t.output().contains("without sudo"), "{}", t.output());
     }
 
     #[test]

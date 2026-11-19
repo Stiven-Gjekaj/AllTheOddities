@@ -29,6 +29,7 @@ pub fn run() -> i32 {
         .map(std::path::PathBuf::from)
         .unwrap_or_default();
     let host = host::Host::current();
+    let home = sudo_home(&env, host.os).unwrap_or(home);
     let state_dir = match host.os {
         host::Os::Windows => env
             .get("LOCALAPPDATA")
@@ -50,12 +51,34 @@ pub fn run() -> i32 {
         home,
         state_dir,
         env,
+        root: None,
         is_admin: host::is_admin(),
+        http: &net::HostHttp,
         runner: &run::HostRunner,
         ask: ask.as_ref(),
-        http: &net::NoHttp,
         dry_run: false,
         out: &mut out,
     };
     oddity::dispatch(argv, &mut ctx, oddity::ODDITIES) as i32
+}
+
+/// Under sudo, the home directory of the person who ran sudo, not of root.
+fn sudo_home(
+    env: &std::collections::HashMap<String, String>,
+    os: host::Os,
+) -> Option<std::path::PathBuf> {
+    let user = env.get("SUDO_USER")?;
+    if os == host::Os::MacOs {
+        return Some(std::path::PathBuf::from("/Users").join(user));
+    }
+    let out = std::process::Command::new("getent")
+        .args(["passwd", user])
+        .output()
+        .ok()?;
+    let line = String::from_utf8_lossy(&out.stdout).into_owned();
+    line.trim()
+        .split(':')
+        .nth(5)
+        .filter(|h| !h.is_empty())
+        .map(std::path::PathBuf::from)
 }
