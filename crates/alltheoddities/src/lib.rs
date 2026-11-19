@@ -13,6 +13,7 @@ pub mod net;
 pub mod oddities;
 pub mod oddity;
 pub mod profile;
+pub mod qr;
 pub mod run;
 pub mod state;
 #[cfg(test)]
