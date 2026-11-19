@@ -27,9 +27,10 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 
 > [!NOTE]
 > **Before the first release.**
-> All 20 oddities of the first release work, and each one is **experimental**: its
-> flags and its output can change. The first release, `2026.MM.0 "Astrolabe"`,
-> is ready. [docs/releasing.md](docs/releasing.md) gives the
+> The 20 oddities of the first release, `2026.11.0 "Astrolabe"`, are in `odd`.
+> Each one is **experimental**: it passes its tests on Windows, macOS and
+> Linux against a fake host, and waits for a run on real computers. Its flags
+> and its output can change. [docs/releasing.md](docs/releasing.md) gives the
 > rules of the versions and the labels.
 
 ---
