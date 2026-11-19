@@ -57,6 +57,17 @@ Each release note has four parts: **New**, **Now stable**, **Fixed** and
 5. Read the draft, then publish it. The installers and `odd update` read the
    latest published release.
 
+6. Update the packages, from the `SHA256SUMS` of the published release:
+
+   ```bash
+   gh release download v<version> -p SHA256SUMS -O /tmp/SHA256SUMS
+   scripts/homebrew-formula.sh <version> /tmp/SHA256SUMS > ../homebrew-tap/Formula/alltheoddities.rb
+   scripts/scoop-manifest.sh <version> /tmp/SHA256SUMS > ../scoop-bucket/bucket/alltheoddities.json
+   ```
+
+   Commit each file in its repository, and push. `scripts/check-packaging.sh`
+   runs in CI and checks the shape of what the two scripts write.
+
 A run of the release workflow by hand builds and hashes everything, and
 publishes nothing. Use it to test the workflow.
 
