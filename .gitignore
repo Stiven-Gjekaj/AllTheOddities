@@ -6,3 +6,9 @@ Thumbs.db
 .idea/
 .vscode/
 .claude/
+
+# The output of cargo. It is made from the source.
+/target/
+
+# The scratch files of the agent workflow.
+/.superpowers/
