@@ -110,3 +110,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked --target aarch64-pc-windows-msvc -- -D warnings
       - run: cargo clippy --workspace --all-targets --locked --target aarch64-apple-darwin -- -D warnings
       - run: cargo clippy --workspace --all-targets --locked --target x86_64-unknown-linux-musl -- -D warnings
+
+  # The package scripts run only at a release, so a break in one waits for
+  # the release. This runs each one on made-up checksums, and checks the
+  # shape of what it writes.
+  packaging:
+    name: the package scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: scripts/check-packaging.sh
