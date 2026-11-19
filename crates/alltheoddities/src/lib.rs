@@ -20,6 +20,12 @@ pub mod version;
 
 /// Run the command that the person typed, and give the exit code.
 pub fn run() -> i32 {
+    // odd update on Windows leaves the old binary beside the new one.
+    if cfg!(windows)
+        && let Ok(exe) = std::env::current_exe()
+    {
+        let _ = std::fs::remove_file(exe.with_file_name("odd.old.exe"));
+    }
     let argv: Vec<std::ffi::OsString> = std::env::args_os().collect();
     let flag = |f: &str| argv.iter().any(|a| a == f);
     let env: std::collections::HashMap<String, String> = std::env::vars().collect();

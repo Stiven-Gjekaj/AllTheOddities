@@ -48,6 +48,16 @@ pub fn command(oddities: &[&dyn Oddity]) -> Command {
                         .action(ArgAction::SetTrue)
                         .help("Print JSON for a script"),
                 ),
+        )
+        .subcommand(
+            Command::new("update")
+                .about("Replace odd with the latest release, after a check of its checksum")
+                .arg(
+                    Arg::new("dry-run")
+                        .long("dry-run")
+                        .action(ArgAction::SetTrue)
+                        .help("Check for a new release, and change nothing"),
+                ),
         );
     for oddity in oddities {
         let sub = Command::new(oddity.name()).about(oddity.summary());

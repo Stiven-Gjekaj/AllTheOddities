@@ -83,6 +83,19 @@ pub fn dispatch(argv: Vec<OsString>, ctx: &mut Ctx<'_>, oddities: &[&dyn Oddity]
     let Some((name, sub)) = m.subcommand() else {
         return Exit::Usage;
     };
+    if name == "update" {
+        ctx.dry_run |= sub.get_flag("dry-run");
+        let result = std::env::current_exe()
+            .map_err(anyhow::Error::from)
+            .and_then(|exe| crate::oddities::update::run(ctx, &exe));
+        return match result {
+            Ok(exit) => exit,
+            Err(e) => {
+                ctx.say(&format!("odd update: {e:#}"));
+                Exit::Failed
+            }
+        };
+    }
     if name == "list" {
         crate::oddities::list::run(oddities, sub.get_flag("json"), ctx);
         return Exit::Done;
@@ -328,6 +341,17 @@ mod tests {
             dispatch(argv(&["probe", "--nope"]), &mut t.ctx(), &[&p]),
             Exit::Usage
         );
+    }
+
+    #[test]
+    fn update_is_a_command_of_odd() {
+        let mut t = TestCtx::new(Os::Linux);
+        // The fake network has no release, so the update fails, but it parses.
+        assert_eq!(
+            dispatch(argv(&["update", "--dry-run"]), &mut t.ctx(), &[]),
+            Exit::Failed
+        );
+        assert!(t.output().starts_with("odd update:"), "{}", t.output());
     }
 
     #[test]

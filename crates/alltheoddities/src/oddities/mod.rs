@@ -3,3 +3,4 @@
 pub mod list;
 pub mod path;
 pub mod ssh;
+pub mod update;
