@@ -4,10 +4,9 @@
 
 ### The small fixes that helped once, and will help again
 
-_Scripts for one job. Each one is short, tested, and safe to run again._
+_One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 
-![Shell](https://img.shields.io/badge/shell-facc15?style=for-the-badge&logo=gnubash&logoColor=030712)
-![PowerShell](https://img.shields.io/badge/powershell-fdba74?style=for-the-badge&logo=powershell&logoColor=030712)
+![Rust](https://img.shields.io/badge/rust-facc15?style=for-the-badge&logo=rust&logoColor=030712)
 ![Windows](https://img.shields.io/badge/windows-fb923c?style=for-the-badge&logo=windows&logoColor=030712)
 ![macOS](https://img.shields.io/badge/macos-f472b6?style=for-the-badge&logo=apple&logoColor=030712)
 ![Linux](https://img.shields.io/badge/linux-e879f9?style=for-the-badge&logo=linux&logoColor=030712)
@@ -15,9 +14,10 @@ _Scripts for one job. Each one is short, tested, and safe to run again._
 
 <p align="center">
   <a href="#overview"><b>Overview</b></a> |
+  <a href="#install"><b>Install</b></a> |
   <a href="#the-oddities"><b>Oddities</b></a> |
-  <a href="#ssh"><b>SSH</b></a> |
-  <a href="#add-an-oddity"><b>Add one</b></a> |
+  <a href="#odd-ssh"><b>SSH</b></a> |
+  <a href="#for-a-script"><b>Scripts</b></a> |
   <a href="docs/oddities.md"><b>Each oddity</b></a>
 </p>
 
@@ -26,25 +26,24 @@ _Scripts for one job. Each one is short, tested, and safe to run again._
 ---
 
 > [!NOTE]
-> **One oddity so far.**
-> This repository grows each time a niche problem costs me an afternoon.
-> [docs/oddities.md](docs/oddities.md) says how each oddity works, and on
-> which hosts I tested it.
+> **Before the first release.**
+> `odd path` and `odd ssh` work, and each oddity is **experimental**: its
+> flags and its output can change. The first release, `2026.MM.0 "Astrolabe"`,
+> comes with 20 oddities. [docs/releasing.md](docs/releasing.md) gives the
+> rules of the versions and the labels.
 
 ---
 
 ## Overview
 
-**AllTheOddities** is the sibling of
+**AllTheOddities** is one command, `odd`, with small fixes in it that each
+helped once. It is the sibling of
 [AllTheTools](https://github.com/Stiven-Gjekaj/AllTheTools).
 
-AllTheTools holds the tools that each computer needs, in one binary, with the
-same command on each host. A thing goes there when many people need it, many
-times.
-
-This repository holds the other things: a script that you run one time on a
-new computer, the fix for one odd problem, the note that you wanted the last
-time. A thing goes here when it helped once, and it is too niche for `att`.
+AllTheTools holds the tools that many people need many times. This repository
+holds the niche jobs: the steps that make a new computer ready, and the fix
+for one odd problem that you otherwise find again with a search each time,
+on three systems with three different answers.
 
 <table>
 <tr>
@@ -52,20 +51,21 @@ time. A thing goes here when it helped once, and it is too niche for `att`.
 
 ### What it aims to do
 
-- **Keep the fix**, so that you do not find it again in a search.
-- **Do one job** in each script.
-- **Run again safely.** The script skips each step that it did before.
-- **Need nothing else** than the tools that the host has.
+- **Keep the fix**, so that you do not search for it again.
+- **Read the host**, and do the correct steps for it.
+- **Run again safely.** It skips each step that is done already.
+- **Undo what it did.** `--undo` reverts each change that `odd` recorded.
 
 </td>
 <td width="50%" valign="top">
 
 ### How it aims to behave
 
-- Each script tells what it does in a comment at the top.
-- Each script has a test, and the test never touches your real files.
-- It keeps what you have already. It adds and does not replace.
-- Each message says what went wrong, and then what to do about it.
+- `--dry-run` prints each step and each command, and changes nothing.
+- It stops before the first change when a step needs an administrator.
+- It never puts a secret on a command line, in a file of its own, or in
+  its output.
+- No test touches the real system of the person who runs it.
 
 </td>
 </tr>
@@ -73,78 +73,118 @@ time. A thing goes here when it helped once, and it is too niche for `att`.
 
 ---
 
-## The oddities
-
-| Oddity | What it does | Hosts |
-| :-- | :-- | :-- |
-| [`ssh/new-machine.sh`](ssh/new-machine.sh) | Makes a new computer ready to use SSH with GitHub | macOS, Linux |
-| [`ssh/new-machine.ps1`](ssh/new-machine.ps1) | Makes a new computer ready to use SSH with GitHub | Windows |
-
-[docs/oddities.md](docs/oddities.md) says how each one works on each host.
-
-### SSH
-
-On the new computer:
-
-```bash
-git clone https://github.com/Stiven-Gjekaj/AllTheOddities.git
-```
+## Install
 
 On macOS or on Linux:
 
 ```bash
-sh AllTheOddities/ssh/new-machine.sh
+curl -fsSL https://raw.githubusercontent.com/Stiven-Gjekaj/AllTheOddities/main/install.sh | sh
 ```
 
 On Windows, in Windows PowerShell or in PowerShell 7:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File AllTheOddities\ssh\new-machine.ps1
+irm https://raw.githubusercontent.com/Stiven-Gjekaj/AllTheOddities/main/install.ps1 | iex
 ```
 
-Windows turns the `ssh-agent` service off by default. Run the script one time
-as an administrator, and it turns the service on. On Windows, the script also
-tells Git to use the OpenSSH of Windows, because the ssh of Git for Windows
-does not use that agent.
+The installer finds your system and your processor, downloads the binary of
+the latest release, and checks it against `SHA256SUMS`. A binary that does not
+match stops the install. Then it puts `odd` in `~/.local/bin`, or in
+`%LOCALAPPDATA%\Programs\odd`, and adds that directory to your PATH.
 
+### Run one time
+
+On a computer that you only set up, run `odd` one time and install nothing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Stiven-Gjekaj/AllTheOddities/main/install.sh | sh -s -- ssh
 ```
-Key made: /Users/you/.ssh/id_ed25519
-The GitHub block is added to /Users/you/.ssh/config.
-Identity added: /Users/you/.ssh/id_ed25519 (you@new-mac)
-The key is on GitHub with the title "new-mac".
-GitHub accepts the key.
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Stiven-Gjekaj/AllTheOddities/main/install.ps1))) ssh
 ```
 
-The clone uses HTTPS, because the computer has no key yet. After the script,
-SSH works.
+Each installer is short. Read it before you run it, if you like:
+[install.sh](install.sh), [install.ps1](install.ps1).
+`odd update` replaces `odd` with the latest release later, with the same
+check.
 
-| `.sh` | `.ps1` | What it does |
-| :-- | :-- | :-- |
-| `-c comment` | `-Comment comment` | Sets the comment of the key. The default is `user@host`. |
-| `-k keyfile` | `-KeyFile keyfile` | Sets the path of the key. The default is `~/.ssh/id_ed25519`. |
-| `-N` | `-NoPassphrase` | Makes the key with no passphrase. |
-| `-o` | `-Offline` | Offline. It does not use the agent, Git, `gh`, or the network. |
+---
+
+## The oddities
+
+| Oddity | What it does | Hosts | Label |
+| :-- | :-- | :-- | :-- |
+| `odd ssh` | Makes SSH ready: connect out to GitHub, let others connect in, and join Tailscale | all | experimental |
+| `odd path` | Adds a directory to the PATH of the user for good, and lists the PATH | all | experimental |
+
+`odd list` shows each oddity of your build. `odd <oddity> --help` gives its
+options. [docs/oddities.md](docs/oddities.md) says what each one changes on
+each host.
+
+### odd ssh
+
+```bash
+odd ssh
+```
+
+It asks three questions, and does each part that you say yes to:
+
+1. **Out: connect from this computer to GitHub.** It makes an ed25519 key,
+   adds a GitHub block to `~/.ssh/config`, gives the key to the agent, sends
+   the public key to GitHub with `gh` when `gh` is signed in, and tests the
+   connection. On Windows, it also makes Git use the ssh of Windows, which
+   uses the agent.
+2. **In: let other computers connect to this one.** It turns on the SSH
+   server, adds the public keys of a GitHub user, and then turns off password
+   login, so that only those keys can log in. It turns off passwords only
+   when at least one key can log in, and it checks the new config with
+   `sshd -t` before it restarts the server.
+3. **Tailscale: reach this computer from anywhere.** It installs Tailscale if
+   it is missing, and joins your tailnet with an ephemeral auth key. The
+   computer leaves the tailnet soon after it goes offline.
+
+```bash
+odd ssh --out                   # only the first part, with no question
+sudo odd ssh --in --github-user you
+sudo odd ssh --tailscale        # reads TS_AUTHKEY, or asks with hidden input
+odd ssh --undo                  # turns off what odd ssh turned on
+```
+
+Run the out part without `sudo`, so that the key belongs to you. The in part
+and the Tailscale part need an administrator.
+
+### odd path
+
+```bash
+odd path add ~/tools/bin
+odd path list
+odd path --undo
+```
+
+---
+
+## For a script
+
+Each oddity takes these flags:
+
+| Flag | What it does |
+| :-- | :-- |
+| `--yes` | Takes the default of each question, and asks nothing |
+| `--dry-run` | Prints each step and each command, and changes nothing |
+| `--undo` | Reverts the changes that the runs of this oddity recorded |
+
+`odd list --json` prints each oddity with its `name`, `label`, `hosts` and
+`summary`.
 
 The exit codes:
 
 | Code | Meaning |
 | :-- | :-- |
-| 0 | The computer is ready, and GitHub accepts the key. |
-| 1 | GitHub does not accept the key yet. The output says why. |
-| 2 | An option is not correct. |
-
----
-
-## Add an oddity
-
-1. Put it in a directory for its topic, such as `ssh/` or `windows/`.
-2. Tell what it does, and how to use it, in a comment at the top.
-3. Add a test beside it. The test makes its own state, in a temporary
-   directory.
-4. Add one row to [the oddities](#the-oddities), and one section to
-   [docs/oddities.md](docs/oddities.md), in a different commit.
-
-[AGENTS.md](AGENTS.md) gives the rules for each change, human or agent.
+| 0 | The oddity did its work. |
+| 1 | A step failed. The output says which step, and what to do. |
+| 2 | The usage is not correct, or the oddity does not run on this host. |
+| 3 | The oddity needs an administrator. It changed nothing. |
 
 ---
 
@@ -152,9 +192,12 @@ The exit codes:
 
 | Document | What it holds |
 | :-- | :-- |
-| [docs/oddities.md](docs/oddities.md) | How each oddity works on each host, and how I tested it |
+| [docs/oddities.md](docs/oddities.md) | What each oddity changes on each host, and what undo does |
+| [docs/limits.md](docs/limits.md) | What each oddity cannot do on each host |
+| [docs/releasing.md](docs/releasing.md) | The versions, the codenames, the labels, and how to cut a release |
+| [CHANGELOG.md](CHANGELOG.md) | Each release |
 | [AGENTS.md](AGENTS.md) | The rules for anybody who changes this repository, human or agent |
-| [scripts/make-banner.py](scripts/make-banner.py) | The script that draws the banner |
+| [docs/superpowers/specs](docs/superpowers/specs) | The design of `odd` |
 
 ---
 
@@ -163,5 +206,5 @@ The exit codes:
 MIT. See [LICENSE](LICENSE).
 
 <div align="center">
-<sub>Read a script before you run it. Each one tells what it changes in the comment at the top.</sub>
+<sub>Read <code>odd &lt;oddity&gt; --dry-run</code> before you run an oddity that changes your system.</sub>
 </div>
