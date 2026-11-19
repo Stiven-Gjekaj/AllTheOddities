@@ -112,3 +112,82 @@ This part needs an administrator.
 Linux. Tailscale SSH has no server on Windows.
 
 Undo runs `tailscale logout`.
+
+## odd git
+
+`odd git add <folder> --name <name> --email <email> [--sign]`
+
+| What it changes | What undo does |
+| :-- | :-- |
+| Writes `~/.gitconfig-<folder>` with the name and the email | Deletes the file, or puts back the text before |
+| Adds `[includeIf "gitdir/i:<folder>/"]` with the path of that file to a block of `~/.gitconfig` (`gitdir:` on Linux, which has case-sensitive paths) | Removes the block |
+| With `--sign`: signs commits and tags with `~/.ssh/id_ed25519.pub`, and adds the key to `~/.ssh/allowed_signers` | Puts back `allowed_signers` |
+
+The folder must exist. `odd` resolves its links, because git compares the
+resolved path. `odd git list` prints each folder with its name and email.
+
+## odd env
+
+`odd env set <NAME> <value>`
+
+| Host | What it changes |
+| :-- | :-- |
+| macOS, Linux | A line `export NAME='value'` in a block of the same profiles as `odd path` |
+| macOS, Linux with fish | `set -Ux NAME value` |
+| Windows | The value `NAME` of `HKCU\Environment`, as `REG_SZ`, so a `%` stays as it is |
+
+Undo removes the line, or puts back the value before on Windows, or deletes a
+value that did not exist.
+
+## odd tweaks
+
+`odd tweaks` lists the tweaks of the host, on or off. `odd tweaks apply`
+turns on the ones that are off. `--only <name>` selects tweaks, and
+`--user-only` skips the ones that need an administrator.
+
+| Host | Tweak | Administrator | What it sets |
+| :-- | :-- | :-- | :-- |
+| Windows | file-extensions | no | `HideFileExt` = 0 |
+| Windows | hidden-files | no | `Hidden` = 1 |
+| Windows | long-paths | yes | `LongPathsEnabled` = 1 |
+| Windows | developer-mode | yes | `AllowDevelopmentWithoutDevLicense` = 1 |
+| macOS | hidden-files | no | `com.apple.finder AppleShowAllFiles` = true, then restarts Finder |
+| macOS | key-repeat | no | `KeyRepeat` = 2, `InitialKeyRepeat` = 15, from the next login |
+| Linux | inotify-watches | yes | `fs.inotify.max_user_watches = 524288` in `/etc/sysctl.d/90-odd.conf` |
+
+Undo puts back each value before, or deletes a value that did not exist.
+
+## odd hostname
+
+`odd hostname <name>` needs an administrator. `odd hostname` prints the names.
+
+| Host | What it changes |
+| :-- | :-- |
+| macOS | `ComputerName`, `LocalHostName` and `HostName` with `scutil` |
+| Linux | `hostnamectl set-hostname`, and the old name on the `127.0.1.1` line of `/etc/hosts` |
+| Windows | `Rename-Computer`. The new name comes after the next restart. |
+
+The name has 1 to 63 letters, digits and hyphens, and at most 15 characters
+on Windows. Undo sets the old names back.
+
+## odd hosts
+
+`odd hosts add <ip> <name>...`, `odd hosts remove <name>`, `odd hosts list`.
+`add` and `remove` need an administrator. Each entry goes in a block of
+`/etc/hosts`, or of `C:\Windows\System32\drivers\etc\hosts`. A name that
+the block has already moves to the new address. Undo removes the block, and
+keeps each line that the person wrote.
+
+## odd dns
+
+`odd dns set <cloudflare | google | quad9 | address...>`, `odd dns reset`,
+`odd dns show`. `set` and `reset` need an administrator.
+
+| Host | The network in use | What it changes |
+| :-- | :-- | :-- |
+| macOS | The service of the interface of the default route | `networksetup -setdnsservers` |
+| Linux | The NetworkManager connection of the device of the default route | `ipv4.dns` and `ipv4.ignore-auto-dns` with `nmcli`, then `nmcli connection up` |
+| Windows | The interface of the default route with the lowest metric | `Set-DnsClientServerAddress` |
+
+Undo puts back the servers before, or the servers of DHCP when there were
+none.
