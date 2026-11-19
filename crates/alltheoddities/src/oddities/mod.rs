@@ -5,6 +5,7 @@ pub mod dns;
 pub mod env;
 pub mod expose;
 pub mod firewall;
+pub mod font;
 pub mod git;
 pub mod hostname;
 pub mod hosts;
