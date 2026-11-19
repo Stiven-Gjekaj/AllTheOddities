@@ -60,7 +60,11 @@ pub trait Oddity: Sync {
 }
 
 /// Each oddity of this build. To add one: add its file, and one line here.
-pub static ODDITIES: &[&dyn Oddity] = &[&crate::oddities::path::Path, &crate::oddities::ssh::Ssh];
+pub static ODDITIES: &[&dyn Oddity] = &[
+    &crate::oddities::path::Path,
+    &crate::oddities::ssh::Ssh,
+    &crate::oddities::git::Git,
+];
 
 /// Parses `argv` and runs the command. Each message goes to `ctx.out`.
 pub fn dispatch(argv: Vec<OsString>, ctx: &mut Ctx<'_>, oddities: &[&dyn Oddity]) -> Exit {
