@@ -10,6 +10,7 @@ pub mod exit;
 pub mod host;
 pub mod net;
 pub mod run;
+pub mod state;
 #[cfg(test)]
 pub mod testing;
 pub mod version;

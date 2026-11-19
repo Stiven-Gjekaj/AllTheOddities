@@ -62,6 +62,15 @@ impl Ctx<'_> {
         std::fs::write(path, text).with_context(|| format!("could not write {}", path.display()))
     }
 
+    /// Deletes a file. In dry-run it prints the path.
+    pub fn remove_file(&mut self, path: &Path) -> Result<()> {
+        if self.dry_run {
+            self.say(&format!("would delete: {}", path.display()));
+            return Ok(());
+        }
+        std::fs::remove_file(path).with_context(|| format!("could not delete {}", path.display()))
+    }
+
     /// Prints one line for the person.
     pub fn say(&mut self, line: &str) {
         let _ = writeln!(self.out, "{line}");
