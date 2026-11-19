@@ -10,3 +10,4 @@ pub mod path;
 pub mod ssh;
 pub mod tweaks;
 pub mod update;
+pub mod wifi_pass;

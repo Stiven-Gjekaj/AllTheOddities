@@ -69,6 +69,7 @@ pub static ODDITIES: &[&dyn Oddity] = &[
     &crate::oddities::hostname::Hostname,
     &crate::oddities::hosts::Hosts,
     &crate::oddities::dns::Dns,
+    &crate::oddities::wifi_pass::WifiPass,
 ];
 
 /// Parses `argv` and runs the command. Each message goes to `ctx.out`.
