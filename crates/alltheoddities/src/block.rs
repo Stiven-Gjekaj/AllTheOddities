@@ -127,6 +127,13 @@ pub fn remove(text: &str, name: &str, comment: &str) -> String {
     l.join()
 }
 
+/// The lines between the markers of the block `name`, if the text has it.
+pub fn body(text: &str, name: &str, comment: &str) -> Option<String> {
+    let l = Lines::parse(text);
+    let (start, end) = l.find(name, comment)?;
+    Some(l.lines[start + 1..end].join("\n"))
+}
+
 /// True when the text has the block `name`.
 pub fn contains(text: &str, name: &str, comment: &str) -> bool {
     Lines::parse(text).find(name, comment).is_some()
@@ -212,5 +219,17 @@ mod tests {
     fn inserts_at_the_end_when_nothing_matches() {
         let out = upsert_before("Port 22\n", "x", "y", "#", &|_: &str| false);
         assert_eq!(out, upsert("Port 22\n", "x", "y", "#"));
+    }
+}
+
+#[cfg(test)]
+mod body_tests {
+    use super::*;
+
+    #[test]
+    fn body_gives_the_lines_between_the_markers() {
+        let text = upsert("a\n", "x", "one\ntwo", "#");
+        assert_eq!(body(&text, "x", "#"), Some("one\ntwo".to_owned()));
+        assert_eq!(body("a\n", "x", "#"), None);
     }
 }
