@@ -336,7 +336,7 @@ mod tests {
     fn macos_writes_a_launch_agent() {
         let mut t = host(Os::MacOs);
         assert_eq!(odd(&mut t, &ARGS), Exit::Done);
-        let path = t.home().join("Library/LaunchAgents/com.odd.sync.plist");
+        let path = agent_path(&t.ctx(), "sync");
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(
             text.contains("<string>/opt/my tools/sync</string>"),
