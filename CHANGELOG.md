@@ -27,6 +27,13 @@ of the versions, the codenames and the labels.
 - `odd carry` (experimental): settings files to another computer, over
   Taildrop.
 - `odd remote` (experimental): remote desktop.
+- `odd font` (experimental): a font for the user only, or a Nerd Font by
+  name.
+- `odd devcert` (experimental): a trusted HTTPS certificate for localhost.
+- `odd autostart` (experimental): a command at each login.
+- `odd cache-purge` (experimental): the caches of developer tools.
+- `odd apps` (experimental): the apps of one list.
+- `odd dualboot-clock` (experimental): one clock for Windows and Linux.
 - `odd list`, `odd update` and `odd --version`.
 - The one-line installers `install.sh` and `install.ps1`.
 
