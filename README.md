@@ -26,7 +26,7 @@ _One command, `odd`. The same oddity on Windows, on macOS and on Linux._
 ---
 
 > [!NOTE]
-> **Version 2026.11.0 "Astrolabe": the first release, with 20 oddities.**
+> **Version 2026.11.1 "Astrolabe": 20 oddities, and a fix for `odd ssh --tailscale`.**
 > Each one is **experimental**: it passes its tests on Windows, macOS and
 > Linux against a fake host, and waits for a run on real computers. Its flags
 > and its output can change. [docs/releasing.md](docs/releasing.md) gives the
