@@ -37,6 +37,12 @@ What each oddity cannot do on each host, and what the tests do not cover.
 - **Keys only:** `odd` writes `ChallengeResponseAuthentication no` and not
   `KbdInteractiveAuthentication no`. Windows 10 has OpenSSH 8.1, which does
   not know the new name. Each later OpenSSH takes the old name.
+- **Linux, Tailscale with no service:** when `odd` starts `tailscaled`
+  itself, it uses userspace networking. Other computers on the tailnet reach
+  the SSH server of this computer. Programs on this computer do not reach
+  the tailnet, because the host has no tailnet routes. The state stays in
+  memory, so `tailscaled` and the tailnet login stop at the next restart.
+  The log is `~/.local/state/odd/tailscaled.log`.
 - **Windows, Tailscale:** Tailscale SSH has no server on Windows, so
   `--tailscale-ssh` does nothing there.
 - **Windows, out:** the `ssh-agent` service is off by default. Without an

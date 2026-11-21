@@ -3,6 +3,14 @@
 Each release of `odd`. [docs/releasing.md](docs/releasing.md) gives the rules
 of the versions, the codenames and the labels.
 
+## Unreleased
+
+### Changed
+
+- `odd ssh --tailscale` works on a Linux that the install script of Tailscale
+  does not know, such as the SystemRescue live system. `odd` uses the static
+  binaries of Tailscale, and starts `tailscaled` when no `tailscaled` runs.
+
 ## 2026.11.0 "Astrolabe" (2026-11-19)
 
 The first release: 20 oddities, each one experimental.

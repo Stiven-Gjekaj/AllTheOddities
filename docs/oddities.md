@@ -98,14 +98,22 @@ This part needs an administrator.
    script of Tailscale on Linux, the package of `pkgs.tailscale.com` on macOS,
    and `winget` on Windows. On macOS, allow the VPN configuration of Tailscale
    when macOS asks.
-2. It reads the auth key from `TS_AUTHKEY`, or asks for it with hidden input.
+   On a Linux that the install script does not know, such as the SystemRescue
+   live system, and when the script fails, `odd` downloads the static
+   binaries of `pkgs.tailscale.com`. It unpacks them into its state
+   directory, `~/.local/state/odd/tailscale`.
+2. On Linux, it makes sure that `tailscaled` runs. It starts the systemd unit
+   `tailscaled` when the host has one. Otherwise it starts `tailscaled` in
+   the background with `--tun=userspace-networking --state=mem:`. It waits
+   until `tailscaled` answers.
+3. It reads the auth key from `TS_AUTHKEY`, or asks for it with hidden input.
    Make the key **ephemeral** and single-use at
    <https://login.tailscale.com/admin/settings/keys>. An ephemeral computer
    leaves the tailnet soon after it goes offline.
-3. It writes the key to a file that only you can read, runs
+4. It writes the key to a file that only you can read, runs
    `tailscale up --auth-key=file:<path>`, and deletes the file at once. The
    key never goes on a command line, where the list of processes shows it.
-4. It prints the tailnet name and address of the computer, and the command
+5. It prints the tailnet name and address of the computer, and the command
    to connect: `ssh <user>@<name>`.
 
 `--tailscale-ssh` lets Tailscale SSH serve the connections, on macOS and
