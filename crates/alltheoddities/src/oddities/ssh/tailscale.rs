@@ -17,6 +17,69 @@ pub const MAC_CLI: &str = "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
 const WINDOWS_CLI: &str = r"C:\Program Files\Tailscale\tailscale.exe";
 const MAC_PKG: &str = "https://pkgs.tailscale.com/stable/Tailscale-latest-macos.pkg";
 const KEYS_PAGE: &str = "https://login.tailscale.com/admin/settings/keys";
+const STATIC_URL: &str = "https://pkgs.tailscale.com/stable/tailscale_latest_";
+/// The value of `ID` in `/etc/os-release` for each Linux that the install
+/// script of Tailscale knows. The script stops on each other value.
+const SCRIPT_DISTROS: &[&str] = &[
+    "ubuntu",
+    "pop",
+    "neon",
+    "tuxedo",
+    "debian",
+    "linuxmint",
+    "elementary",
+    "industrial-os",
+    "parrot",
+    "mendel",
+    "galliumos",
+    "pureos",
+    "kaisen",
+    "raspbian",
+    "kali",
+    "pika",
+    "sparky",
+    "centos",
+    "ol",
+    "rhel",
+    "miraclelinux",
+    "fedora",
+    "rocky",
+    "almalinux",
+    "nobara",
+    "openmandriva",
+    "sangoma",
+    "risios",
+    "cloudlinux",
+    "alinux",
+    "fedora-asahi-remix",
+    "ultramarine",
+    "amzn",
+    "xenenterprise",
+    "opensuse-leap",
+    "sles",
+    "opensuse-tumbleweed",
+    "opensuse-slowroll",
+    "sle-micro-rancher",
+    "arch",
+    "archarm",
+    "endeavouros",
+    "blendos",
+    "garuda",
+    "archcraft",
+    "cachyos",
+    "omarchy",
+    "manjaro",
+    "manjaro-arm",
+    "biglinux",
+    "alpine",
+    "postmarketos",
+    "bazzite",
+    "void",
+    "gentoo",
+    "photon",
+    "zorin",
+    "steamos",
+];
 
 /// The Tailscale CLI of this host, if it has one. odd expose and odd carry
 /// use it too.
@@ -27,23 +90,73 @@ pub fn cli(ctx: &Ctx<'_>) -> Option<String> {
     let path = match ctx.host.os {
         Os::MacOs => ctx.sys_path(MAC_CLI),
         Os::Windows => ctx.sys_path(WINDOWS_CLI),
-        Os::Linux => return None,
+        Os::Linux => ctx.state_dir.join("tailscale").join("tailscale"),
     };
     path.exists().then(|| path.to_string_lossy().into_owned())
 }
 
-fn install(ctx: &mut Ctx<'_>) -> Result<()> {
+/// The name of the processor in the names of the static files of
+/// Tailscale.
+fn static_arch(arch: &str) -> Option<&'static str> {
+    match arch {
+        "x86_64" => Some("amd64"),
+        "aarch64" => Some("arm64"),
+        "x86" => Some("386"),
+        "arm" => Some("arm"),
+        _ => None,
+    }
+}
+
+/// Puts the static binaries of Tailscale in the state directory of odd.
+/// Gives the path of the CLI.
+fn install_static(ctx: &mut Ctx<'_>, arch: &str) -> Result<String> {
+    let Some(name) = static_arch(arch) else {
+        bail!("Tailscale has no static binaries for the processor {arch}");
+    };
+    let url = format!("{STATIC_URL}{name}.tgz");
+    let dir = ctx.state_dir.join("tailscale");
+    let tgz = ctx.state_dir.join(format!("tailscale_latest_{name}.tgz"));
+    if ctx.dry_run {
+        ctx.say(&format!("would download: {url}"));
+    } else {
+        let bytes = ctx.http.get_bytes(&url)?;
+        ctx.make_dir(&dir)?;
+        std::fs::write(&tgz, bytes)?;
+    }
+    let t = tgz.to_string_lossy().into_owned();
+    let d = dir.to_string_lossy().into_owned();
+    // The archive has one directory, such as tailscale_1.2.3_amd64. The
+    // binaries go directly into dir.
+    let out = ctx.change("tar", &["-xzf", &t, "-C", &d, "--strip-components=1"]);
+    let _ = std::fs::remove_file(&tgz);
+    if !out?.success() {
+        bail!("tar could not unpack {url}");
+    }
+    Ok(dir.join("tailscale").to_string_lossy().into_owned())
+}
+
+/// Installs Tailscale. Gives the path of the CLI when the place of the CLI
+/// is not a usual place.
+fn install(ctx: &mut Ctx<'_>) -> Result<Option<String>> {
     match ctx.host.os {
         Os::Linux => {
+            let arch = std::env::consts::ARCH;
+            let known = ctx
+                .host
+                .distro
+                .as_deref()
+                .is_none_or(|d| SCRIPT_DISTROS.contains(&d));
+            if !known {
+                ctx.say("The install script of Tailscale does not know this Linux. odd uses the static binaries.");
+                return install_static(ctx, arch).map(Some);
+            }
             let out = ctx.change(
                 "sh",
                 &["-c", "curl -fsSL https://tailscale.com/install.sh | sh"],
             )?;
             if !out.success() {
-                bail!(
-                    "the install script of Tailscale failed: {}",
-                    out.stderr.trim()
-                );
+                ctx.say("The install script of Tailscale failed. odd uses the static binaries.");
+                return install_static(ctx, arch).map(Some);
             }
         }
         Os::MacOs => {
@@ -87,7 +200,7 @@ fn install(ctx: &mut Ctx<'_>) -> Result<()> {
             }
         }
     }
-    Ok(())
+    Ok(None)
 }
 
 /// A directory with the key in it, that only the user can read. It goes
@@ -153,8 +266,8 @@ pub fn join(m: &ArgMatches, ctx: &mut Ctx<'_>) -> Result<()> {
                 ctx.say("odd skips Tailscale.");
                 return Ok(());
             }
-            install(ctx)?;
-            match cli(ctx) {
+            let installed = install(ctx)?;
+            match installed.or_else(|| cli(ctx)) {
                 Some(c) => c,
                 None if ctx.dry_run => "tailscale".into(),
                 None => bail!(
@@ -375,6 +488,74 @@ mod tests {
         odd(&mut t, &[]);
         let sh = t.runner.calls().into_iter().find(|c| c[0] == "sh").unwrap();
         assert!(sh[2].contains("https://tailscale.com/install.sh"), "{sh:?}");
+    }
+
+    /// A Linux with no Tailscale, that serves each static archive.
+    fn bare_linux(distro: &str) -> TestCtx {
+        let mut t = TestCtx::new(Os::Linux);
+        t.distro = Some(distro.into());
+        for arch in ["amd64", "arm64", "386", "arm"] {
+            let url = format!("{}{arch}.tgz", super::STATIC_URL);
+            t.http.bytes(&url, vec![0x1f, 0x8b]);
+        }
+        t.runner.answer("tar", &[], Output::ok(""));
+        t.env.insert("USER".into(), "you".into());
+        t
+    }
+
+    fn tar_call(t: &TestCtx) -> Vec<String> {
+        t.runner
+            .calls()
+            .into_iter()
+            .find(|c| c[0] == "tar")
+            .expect("no tar call")
+    }
+
+    #[test]
+    fn an_unknown_distro_takes_the_static_binaries() {
+        let mut t = bare_linux("sysrescue");
+        let dir = t.state_dir().join("tailscale");
+        let cli = dir.join("tailscale").to_string_lossy().into_owned();
+        t.runner.answer(&cli, &["up"], Output::ok(""));
+        t.runner.answer(&cli, &["status"], Output::ok(STATUS));
+        t.ask.push("y");
+        t.ask.push(KEY);
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        assert!(!t.runner.calls().iter().any(|c| c[0] == "sh"));
+        let tar = tar_call(&t);
+        assert!(tar.contains(&dir.to_string_lossy().into_owned()), "{tar:?}");
+        assert!(tar.contains(&"--strip-components=1".to_owned()), "{tar:?}");
+        assert_eq!(up_call(&t)[0], cli);
+        let tgz = std::path::Path::new(&tar[2]);
+        assert!(!tgz.exists(), "{tgz:?}");
+    }
+
+    #[test]
+    fn a_failed_install_script_takes_the_static_binaries() {
+        let mut t = bare_linux("ubuntu");
+        t.runner
+            .answer("sh", &["-c"], Output::fail(1, "no repository"));
+        t.ask.push("y");
+        t.ask.push("");
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        assert!(t.runner.calls().iter().any(|c| c[0] == "sh"));
+        tar_call(&t);
+    }
+
+    #[test]
+    fn no_network_stops_the_static_install() {
+        let mut t = bare_linux("sysrescue");
+        *t.http.fail.borrow_mut() = true;
+        t.ask.push("y");
+        assert_eq!(odd(&mut t, &[]), Exit::Failed);
+        assert!(!t.runner.calls().iter().any(|c| c[0] == "tar"));
+    }
+
+    #[test]
+    fn the_static_archive_has_the_name_of_the_processor() {
+        assert_eq!(super::static_arch("x86_64"), Some("amd64"));
+        assert_eq!(super::static_arch("aarch64"), Some("arm64"));
+        assert_eq!(super::static_arch("riscv64"), None);
     }
 
     #[test]
