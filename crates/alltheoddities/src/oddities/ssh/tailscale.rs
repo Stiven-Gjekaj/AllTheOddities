@@ -203,6 +203,79 @@ fn install(ctx: &mut Ctx<'_>) -> Result<Option<String>> {
     Ok(None)
 }
 
+/// True when the CLI reaches a tailscaled. `status --json` succeeds also
+/// when the computer is not logged in.
+fn daemon_answers(ctx: &Ctx<'_>, cli: &str) -> bool {
+    ctx.query(cli, &["status", "--json"])
+        .is_ok_and(|o| o.success())
+}
+
+/// The tailscaled that goes with the CLI.
+fn daemon_of(cli: &str) -> String {
+    if cli == "tailscale" {
+        return "tailscaled".into();
+    }
+    std::path::Path::new(cli)
+        .with_file_name("tailscaled")
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// Makes sure that a tailscaled runs on Linux. The install script starts
+/// one with systemd. The static binaries and a live system have none.
+fn start_daemon(ctx: &mut Ctx<'_>, cli: &str) -> Result<()> {
+    if daemon_answers(ctx, cli) {
+        return Ok(());
+    }
+    let unit = ctx
+        .query("systemctl", &["cat", "tailscaled"])
+        .is_ok_and(|o| o.success());
+    let log = ctx.state_dir.join("tailscaled.log");
+    if unit {
+        let out = ctx.change("systemctl", &["start", "tailscaled"])?;
+        if !out.success() {
+            bail!(
+                "systemctl could not start tailscaled: {}",
+                out.stderr.trim()
+            );
+        }
+    } else {
+        // Userspace networking needs no TUN device and no change to the
+        // routes. Connections from the tailnet to a port of this computer,
+        // such as the SSH server, still arrive. The state stays in memory:
+        // the key is ephemeral, so a state on disk has no use.
+        ctx.say("No tailscaled runs. odd starts one in the background.");
+        ctx.make_dir(&ctx.state_dir.clone())?;
+        let daemon = daemon_of(cli);
+        let l = log.to_string_lossy().into_owned();
+        let out = ctx.change(
+            "sh",
+            &[
+                "-c",
+                r#"nohup "$0" --tun=userspace-networking --state=mem: >"$1" 2>&1 </dev/null &"#,
+                &daemon,
+                &l,
+            ],
+        )?;
+        if !out.success() {
+            bail!("odd could not start tailscaled: {}", out.stderr.trim());
+        }
+    }
+    if ctx.dry_run {
+        return Ok(());
+    }
+    for _ in 0..40 {
+        if daemon_answers(ctx, cli) {
+            return Ok(());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+    bail!(
+        "tailscaled did not start in 10 seconds. Its log is {}",
+        log.display()
+    )
+}
+
 /// A directory with the key in it, that only the user can read. It goes
 /// away when this value goes away, also after an error.
 struct KeyFile {
@@ -294,6 +367,9 @@ pub fn join(m: &ArgMatches, ctx: &mut Ctx<'_>) -> Result<()> {
         } else {
             args.push("--ssh".into());
         }
+    }
+    if ctx.host.os == Os::Linux {
+        start_daemon(ctx, &cli)?;
     }
     state::record(
         ctx,
@@ -549,6 +625,96 @@ mod tests {
         t.ask.push("y");
         assert_eq!(odd(&mut t, &[]), Exit::Failed);
         assert!(!t.runner.calls().iter().any(|c| c[0] == "tar"));
+    }
+
+    #[test]
+    fn a_live_system_starts_tailscaled_in_userspace() {
+        let mut t = bare_linux("sysrescue");
+        let dir = t.state_dir().join("tailscale");
+        let cli = dir.join("tailscale").to_string_lossy().into_owned();
+        let daemon = dir.join("tailscaled").to_string_lossy().into_owned();
+        t.runner.answer(&cli, &["up"], Output::ok(""));
+        t.runner.answer(&cli, &["status"], Output::ok(STATUS));
+        t.runner.answer_once(
+            &cli,
+            &["status"],
+            Output::fail(1, "failed to connect to local tailscaled"),
+        );
+        t.runner
+            .answer("systemctl", &["cat"], Output::fail(1, "No files found"));
+        t.runner.answer("sh", &["-c"], Output::ok(""));
+        t.ask.push("y");
+        t.ask.push(KEY);
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        let calls = t.runner.calls();
+        let sh = calls.iter().position(|c| c[0] == "sh").expect("no sh call");
+        let up = calls
+            .iter()
+            .position(|c| c.get(1).is_some_and(|a| a == "up"))
+            .unwrap();
+        assert!(sh < up, "{calls:?}");
+        assert!(
+            calls[sh][2].contains("--tun=userspace-networking"),
+            "{:?}",
+            calls[sh]
+        );
+        assert!(calls[sh][2].contains("--state=mem:"), "{:?}", calls[sh]);
+        assert_eq!(calls[sh][3], daemon);
+        let status_after = calls[sh..up]
+            .iter()
+            .any(|c| c[0] == cli && c[1] == "status");
+        assert!(status_after, "{calls:?}");
+        for call in &calls {
+            assert!(!call.iter().any(|a| a.contains("SECRET123")), "{call:?}");
+        }
+    }
+
+    #[test]
+    fn a_systemd_unit_starts_tailscaled() {
+        let mut t = host(Os::Linux);
+        t.runner
+            .answer_once("tailscale", &["status"], Output::fail(1, "no daemon"));
+        t.runner.answer("systemctl", &["cat"], Output::ok("[Unit]"));
+        t.runner.answer("systemctl", &["start"], Output::ok(""));
+        t.ask.push(KEY);
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        let calls = t.runner.calls();
+        assert!(calls.contains(&vec![
+            "systemctl".to_owned(),
+            "start".into(),
+            "tailscaled".into()
+        ]));
+        assert!(!calls.iter().any(|c| c[0] == "sh"), "{calls:?}");
+    }
+
+    #[test]
+    fn a_running_tailscaled_is_left_alone() {
+        let mut t = host(Os::Linux);
+        t.ask.push(KEY);
+        assert_eq!(odd(&mut t, &[]), Exit::Done);
+        let calls = t.runner.calls();
+        assert!(
+            !calls.iter().any(|c| c[0] == "sh" || c[0] == "systemctl"),
+            "{calls:?}"
+        );
+    }
+
+    #[test]
+    fn the_key_file_is_gone_after_tailscaled_starts_and_up_fails() {
+        let mut t = host(Os::Linux);
+        t.runner
+            .answer_once("tailscale", &["status"], Output::fail(1, "no daemon"));
+        t.runner.answer("systemctl", &["cat"], Output::fail(1, ""));
+        t.runner.answer("sh", &["-c"], Output::ok(""));
+        t.runner
+            .answer("tailscale", &["up"], Output::fail(1, "invalid key"));
+        t.ask.push(KEY);
+        assert_eq!(odd(&mut t, &[]), Exit::Failed);
+        let file = up_call(&t)
+            .iter()
+            .find_map(|a| a.strip_prefix("--auth-key=file:").map(str::to_owned))
+            .unwrap();
+        assert!(!std::path::Path::new(&file).parent().unwrap().exists());
     }
 
     #[test]

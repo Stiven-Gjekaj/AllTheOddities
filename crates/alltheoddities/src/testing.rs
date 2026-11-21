@@ -12,10 +12,14 @@ use crate::host::{Host, Os};
 use crate::net::Http;
 use crate::run::{Output, Runner};
 
+/// The program, the prefix of the arguments, the answer, and true when the
+/// answer is for one call only.
+type Answer = (String, Vec<String>, Output, bool);
+
 /// A runner that records each call and gives prepared answers.
 #[derive(Default)]
 pub struct FakeRunner {
-    answers: RefCell<Vec<(String, Vec<String>, Output)>>,
+    answers: RefCell<Vec<Answer>>,
     calls: RefCell<Vec<Vec<String>>>,
     path: RefCell<Vec<String>>,
 }
@@ -29,7 +33,17 @@ impl FakeRunner {
         let prefix = prefix.iter().map(|s| (*s).to_owned()).collect();
         self.answers
             .borrow_mut()
-            .push((program.to_owned(), prefix, out));
+            .push((program.to_owned(), prefix, out, false));
+    }
+
+    /// An answer for the next call only. It wins over an answer of
+    /// [`FakeRunner::answer`] with the same prefix. So a test can give a
+    /// command that fails one time, and then succeeds.
+    pub fn answer_once(&self, program: &str, prefix: &[&str], out: Output) {
+        let prefix = prefix.iter().map(|s| (*s).to_owned()).collect();
+        self.answers
+            .borrow_mut()
+            .push((program.to_owned(), prefix, out, true));
     }
 
     pub fn with_path(&self, programs: &[&str]) {
@@ -48,18 +62,24 @@ impl Runner for FakeRunner {
         let mut call = vec![program.to_owned()];
         call.extend(args.iter().map(|s| (*s).to_owned()));
         self.calls.borrow_mut().push(call.clone());
-        let answers = self.answers.borrow();
+        let mut answers = self.answers.borrow_mut();
         let best = answers
             .iter()
             .enumerate()
-            .filter(|(_, (p, prefix, _))| {
+            .filter(|(_, (p, prefix, _, _))| {
                 p == program
                     && prefix.len() <= args.len()
                     && prefix.iter().zip(args).all(|(a, b)| a == b)
             })
-            .max_by_key(|(i, (_, prefix, _))| (prefix.len(), *i));
+            .max_by_key(|(i, (_, prefix, _, once))| (prefix.len(), *once, *i))
+            .map(|(i, (_, _, out, once))| (i, out.clone(), *once));
         match best {
-            Some((_, (_, _, out))) => Ok(out.clone()),
+            Some((i, out, once)) => {
+                if once {
+                    answers.remove(i);
+                }
+                Ok(out)
+            }
             None => panic!("unexpected call: {}", call.join(" ")),
         }
     }
